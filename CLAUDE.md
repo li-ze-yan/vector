@@ -20,6 +20,7 @@ npm run dev      # 启动开发服务器 (next dev)
 npm run build    # 生产构建 (next build)
 npm run start    # 启动生产服务器 (next start)
 npm run lint     # 运行 ESLint 检查
+npm run format   # Prettier 格式化全部文件
 ```
 
 ## 项目结构
@@ -35,6 +36,15 @@ public/          # 静态资源 (SVG)
 - 使用 App Router（`app/` 目录，而非 `pages/`）。
 - 路径别名 `@/*` 映射到项目根目录（在 tsconfig.json 中配置）。
 - 暗色模式通过 `prefers-color-scheme` 媒体查询和 Tailwind `dark:` 工具类实现。
+
+## Git 规范
+
+- 使用 [Conventional Commits](https://www.conventionalcommits.org/) 格式：`type(scope): description`
+- 允许的 type: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+- scope 可选，description 使用英文，首字母小写，不加句号
+- 示例: `feat(auth): add login page`, `fix: resolve hydration mismatch`, `chore: update dependencies`
+- pre-commit hook 会自动通过 lint-staged 执行 ESLint + Prettier
+- commit-msg hook 会通过 commitlint 校验 commit message 格式
 
 ## 代码约定
 
