@@ -37,7 +37,7 @@ export default async function DocPage(props: DocsProps) {
     <>
       {/* Add a placeholder div so the Next.js router can find the scrollable element. */}
       <div hidden />
-      <div className="px-4 pt-10 pb-24 sm:px-6 xl:pr-0">
+      <div className="px-4 pt-10 pb-24 sm:px-40">
         <h1
           data-title="true"
           className="mt-2 text-3xl font-medium tracking-tight text-gray-950 dark:text-white"

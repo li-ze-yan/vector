@@ -1,6 +1,7 @@
 import type { MDXComponents } from "mdx/types";
 import Link from "next/link";
 import React from "react";
+import { CodeExample } from "./components";
 
 function getTextContent(node: React.ReactNode): string {
   if (typeof node === "string" || typeof node === "number") {
@@ -94,8 +95,8 @@ const components = {
     const child = React.Children.only(props.children) as React.ReactElement;
     if (!child) return null;
 
-    const { className } = child.props as any;
     let { children: code } = child.props as any;
+    const { className } = child.props as any;
     const lang = className ? className.replace("language-", "") : "";
     let filename = undefined;
 
@@ -110,10 +111,7 @@ const components = {
 
     return (
       <div>
-        {/* <CodeExample example={{ lang, code }} className="not-prose" filename={filename} /> */}
-        {lang}
-        {code}
-        {filename}
+        <CodeExample example={{ lang, code }} className="not-prose" filename={filename} />
       </div>
     );
   },
