@@ -1,3 +1,5 @@
+import { ThemeToggle } from "@/components";
+
 export default function Home() {
   return (
     <div className="w-screen h-screen bg-white/50 dark:bg-black/50 flex flex-col justify-center items-center gap-4">
@@ -7,6 +9,7 @@ export default function Home() {
       <p className="text-2xl" style={{ fontFamily: "var(--font-ubuntu-mono)" }}>
         Ubuntu Mono
       </p>
+      <ThemeToggle />
     </div>
   );
 }
