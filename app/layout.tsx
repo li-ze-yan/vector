@@ -24,7 +24,7 @@ export default function RootLayout({
          */}
         <Script src={`data:text/javascript;base64,${btoa(darkModeScript)}`} />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body>{children}</body>
     </html>
   );
 }
