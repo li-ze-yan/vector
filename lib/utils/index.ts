@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
 const js = String.raw;
 
 export const darkModeScript = js`
@@ -49,3 +52,42 @@ export const darkModeScript = js`
     } catch (_) {}
   }
 `;
+
+export async function getDocPageSlugs() {
+  const docsDir = path.join(process.cwd(), "docs");
+  const slugs = [];
+  for (const file of await fs.readdir(docsDir)) {
+    if (!file.endsWith(".mdx")) continue;
+    slugs.push(path.parse(file).name);
+  }
+  return slugs;
+}
+
+export async function getDocPageBySlug(
+  slug: string,
+): Promise<null | { Component: React.FC; title: string; description: string }> {
+  try {
+    const filePath = path.join(process.cwd(), "docs", `${slug}.mdx`);
+    debugger;
+    const stat = await fs.stat(filePath).catch(() => null);
+    if (!stat) {
+      return null;
+    }
+
+    const mdxModule = await import(`@/docs/${slug}.mdx`);
+    if (!mdxModule.default) {
+      return null;
+    }
+
+    return {
+      Component: mdxModule.default,
+      title: mdxModule.title,
+      description: mdxModule.description,
+    };
+  } catch (e) {
+    debugger;
+
+    console.error(e);
+    return null;
+  }
+}

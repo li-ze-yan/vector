@@ -1,7 +1,22 @@
+import createMdx from "@next/mdx";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: ["@tailwindcss/node"],
+  pageExtensions: ["js", "jsx", "ts", "tsx", "mdx"],
+  outputFileTracingIncludes: {
+    "/**/*": ["./docs/*.mdx"],
+  },
+  turbopack: {
+    rules: {
+      // Support import .svg as react components in dev builds
+      "*.react.svg": {
+        loaders: ["@svgr/webpack"],
+        as: "*.js",
+      },
+    },
+  },
 };
 
-export default nextConfig;
+const withMDX = createMdx();
+export default withMDX(nextConfig);

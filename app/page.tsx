@@ -1,4 +1,5 @@
 import { ThemeToggle } from "@/components";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -10,6 +11,9 @@ export default function Home() {
         Ubuntu Mono
       </p>
       <ThemeToggle />
+      <Link href="/docs/example" className="text-blue-500 underline hover:text-blue-700">
+        Docs Example
+      </Link>
     </div>
   );
 }
