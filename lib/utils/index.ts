@@ -1,6 +1,7 @@
 import { TOCEntry } from "@/components/TableOfContents/type";
 import fs from "node:fs/promises";
 import path from "node:path";
+import DocConfig from "../DocConfig";
 
 const js = String.raw;
 
@@ -91,6 +92,26 @@ export async function getDocPageBySlug(
     console.error(e);
     return null;
   }
+}
+
+export function getSectionAndTitleBySlug(slug: string): { section: string; title: string } | null {
+  const currentPath = `/docs/${slug}`;
+  for (const [section, entries] of Object.entries(DocConfig)) {
+    for (const [title, path, children] of entries) {
+      if (path === currentPath) {
+        return { section, title };
+      }
+
+      if (Array.isArray(children)) {
+        for (const [childTitle, childPath] of children) {
+          if (childPath === currentPath) {
+            return { section, title: childTitle };
+          }
+        }
+      }
+    }
+  }
+  return null;
 }
 
 export async function generateTableOfContents(slug: string) {

@@ -1,10 +1,17 @@
+import { DocsSidebar, Header, MobileDocsNav } from "@/components";
+
 export default async function Layout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+  breadcrumb,
+}: React.PropsWithChildren<{ breadcrumb: React.ReactNode }>) {
   return (
     <div>
+      <div className="fixed inset-x-0 top-0 z-10 border-b border-gray-950/5 dark:border-white/10">
+        <Header />
+        <MobileDocsNav header={<Header />} breadcrumb={breadcrumb}>
+          <DocsSidebar />
+        </MobileDocsNav>
+      </div>
       <div className="grid min-h-dvh grid-cols-1 grid-rows-[1fr_1px_auto_1px_auto] pt-26.25 lg:grid-cols-[var(--container-2xs)_2.5rem_minmax(0,1fr)_2.5rem] lg:pt-14.25 xl:grid-cols-[var(--container-2xs)_2.5rem_minmax(0,1fr)_2.5rem]">
         <div className="relative col-start-1 row-span-full row-start-1 max-lg:hidden">
           <div className="absolute inset-0">
