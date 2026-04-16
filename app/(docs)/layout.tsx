@@ -1,4 +1,4 @@
-import { DocsSidebar, Header, MobileDocsNav } from "@/components";
+import { DocsSidebar, DocsSidebarAutoscroll, Header, MobileDocsNav } from "@/components";
 
 export default async function Layout({
   children,
@@ -13,22 +13,13 @@ export default async function Layout({
         </MobileDocsNav>
       </div>
       <div className="grid min-h-dvh grid-cols-1 grid-rows-[1fr_1px_auto_1px_auto] pt-26.25 lg:grid-cols-[var(--container-2xs)_2.5rem_minmax(0,1fr)_2.5rem] lg:pt-14.25 xl:grid-cols-[var(--container-2xs)_2.5rem_minmax(0,1fr)_2.5rem]">
+        {/* Sidebar */}
         <div className="relative col-start-1 row-span-full row-start-1 max-lg:hidden">
           <div className="absolute inset-0">
             <div className="sticky top-14.25 bottom-0 left-0 h-full max-h-[calc(100dvh-(var(--spacing)*14.25))] w-2xs overflow-y-auto p-6">
-              {/* <DocsSidebarAutoscroll>
+              <DocsSidebarAutoscroll>
                 <DocsSidebar />
-              </DocsSidebarAutoscroll> */}
-              <p>1111</p>
-              <p>1111</p>
-              <p>1111</p>
-              <p>1111</p>
-              <p>1111</p>
-              <p>1111</p>
-              <p>1111</p>
-              <p>1111</p>
-              <p>1111</p>
-              <p>1111</p>
+              </DocsSidebarAutoscroll>
             </div>
           </div>
         </div>

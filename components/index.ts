@@ -4,6 +4,7 @@ export * from "./CodeExample";
 export * from "./Content";
 export * from "./CopyButton";
 export * from "./DocsSidebar";
+export * from "./DocsSidebarAutoscroll";
 export * from "./DocsSidebarLink";
 export * from "./Example";
 export * from "./Figure";
