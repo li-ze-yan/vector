@@ -107,5 +107,5 @@ export const skills = [
     title: "Docker",
     description: "容器化平台，将应用及其依赖打包为轻量级容器，实现一致的开发和部署环境",
   },
-  { title: "K8S", description: "容器编排系统，自动化管理容器的部署、扩缩容和故障恢复" },
+  // { title: "K8S", description: "容器编排系统，自动化管理容器的部署、扩缩容和故障恢复" },
 ];
