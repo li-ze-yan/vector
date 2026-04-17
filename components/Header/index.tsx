@@ -1,7 +1,7 @@
 "use client";
 
-import { MyGithub } from "@/lib/Constant";
-import { Dialog, DialogPanel } from "@headlessui/react";
+import { MyGithub, skills } from "@/lib/Constant";
+import { Dialog, DialogPanel, Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -67,16 +67,57 @@ export function Header() {
           </Link>
         </div>
         <div className="flex items-center gap-6 max-md:hidden">
-          <Link href="/docs" className="text-sm/6 text-gray-950 dark:text-white">
-            Docs
-          </Link>
-          <Link href="/blog" className="text-sm/6 text-gray-950 dark:text-white">
+          <Popover>
+            <PopoverButton className="text-sm/6 text-gray-950 dark:text-white">文档</PopoverButton>
+            <PopoverPanel
+              transition
+              anchor="bottom"
+              className="z-50 divide-y divide-gray-950/5 dark:divide-white/5 rounded-xl bg-white dark:bg-gray-950 shadow-popup dark:shadow-popup-dark text-sm/6 text-gray-950 dark:text-white transition duration-200 ease-in-out [--anchor-gap:--spacing(5)] data-closed:-translate-y-1 data-closed:opacity-0"
+            >
+              <div className="p-3 grid grid-cols-2 gap-1">
+                {skills?.map((skill) => {
+                  return (
+                    <Link
+                      key={skill.title}
+                      className="col-span-1 block rounded-lg px-3 py-2 transition hover:bg-gray-950/5 dark:hover:bg-white/5"
+                      href="#"
+                    >
+                      <p className="font-semibold">{skill.title}</p>
+                      <p className="max-w-52 line-clamp-2 text-xs/5 text-gray-500 dark:text-gray-600">
+                        {skill.description}
+                      </p>
+                    </Link>
+                  );
+                })}
+              </div>
+            </PopoverPanel>
+          </Popover>
+          <Popover>
+            <PopoverButton className="text-sm/6 text-gray-950 dark:text-white">文章</PopoverButton>
+            <PopoverPanel
+              transition
+              anchor="bottom"
+              className="z-50 divide-y divide-gray-950/5 dark:divide-white/5 rounded-xl bg-white dark:bg-gray-950 shadow-popup dark:shadow-popup-dark text-sm/6 text-gray-950 dark:text-white transition duration-200 ease-in-out [--anchor-gap:--spacing(5)] data-closed:-translate-y-1 data-closed:opacity-0"
+            >
+              <div className="p-3 grid grid-cols-2 gap-1">正在写～</div>
+            </PopoverPanel>
+          </Popover>
+          <Popover>
+            <PopoverButton className="text-sm/6 text-gray-950 dark:text-white">案例</PopoverButton>
+            <PopoverPanel
+              transition
+              anchor="bottom"
+              className="z-50 divide-y divide-gray-950/5 dark:divide-white/5 rounded-xl bg-white dark:bg-gray-950 shadow-popup dark:shadow-popup-dark text-sm/6 text-gray-950 dark:text-white transition duration-200 ease-in-out [--anchor-gap:--spacing(5)] data-closed:-translate-y-1 data-closed:opacity-0"
+            >
+              <div className="p-3 grid grid-cols-2 gap-1">正在写～</div>
+            </PopoverPanel>
+          </Popover>
+          {/* <Link href="/blog" className="text-sm/6 text-gray-950 dark:text-white">
             Blog
           </Link>
           <Link href="/showcase" className="text-sm/6 text-gray-950 dark:text-white">
             Showcase
-          </Link>
-
+          </Link> */}
           <Link href={MyGithub} aria-label="GitHub repository">
             <GitHubLogo className="size-5 fill-black/40 dark:fill-gray-400" />
           </Link>
@@ -108,7 +149,7 @@ export function Header() {
                 >
                   Docs
                 </Link>
-                <Link
+                {/* <Link
                   href="/blog"
                   className="rounded-lg px-3 py-2 text-xl/9 font-medium text-gray-950 data-active:bg-gray-950/5 dark:text-white dark:hover:bg-white/10"
                 >
@@ -119,7 +160,7 @@ export function Header() {
                   className="rounded-lg px-3 py-2 text-xl/9 font-medium text-gray-950 data-active:bg-gray-950/5 dark:text-white dark:hover:bg-white/10"
                 >
                   Showcase
-                </Link>
+                </Link> */}
                 <Link
                   href={MyGithub}
                   className="rounded-lg px-3 py-2 text-xl/9 font-medium text-gray-950 data-active:bg-gray-950/5 dark:text-white dark:hover:bg-white/10"
