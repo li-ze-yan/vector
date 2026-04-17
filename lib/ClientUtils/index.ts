@@ -55,8 +55,9 @@ export const darkModeScript = js`
 export function getSectionAndTitleBySlug(
   slug: string,
   docConfig: DocCategory,
+  subdir?: string,
 ): { section: string; title: string } | null {
-  const currentPath = `/docs/${slug}`;
+  const currentPath = subdir ? `/docs/${subdir}/${slug}` : `/docs/${slug}`;
   for (const [section, entries] of Object.entries(docConfig)) {
     for (const [title, path, children] of entries) {
       if (path === currentPath) {

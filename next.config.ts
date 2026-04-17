@@ -16,6 +16,16 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  async redirects() {
+    return [
+      // Backdrop Filters
+      {
+        source: "/react-docs",
+        destination: "/react-docs/react-hooks",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 const withMDX = createMdx();

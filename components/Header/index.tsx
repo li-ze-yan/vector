@@ -75,7 +75,7 @@ export function Header() {
                     <Link
                       key={skill?.title}
                       className="col-span-1 block rounded-lg px-3 py-2 transition hover:bg-gray-950/5 dark:hover:bg-white/5"
-                      href="#"
+                      href={skill?.path}
                     >
                       <p className="font-semibold">{skill?.title}</p>
                       <p

@@ -10,13 +10,13 @@ type Params = {
 };
 
 export async function generateStaticParams() {
-  const slugs = await getDocPageSlugs();
+  const slugs = await getDocPageSlugs("react-docs");
   return slugs.map((slug) => ({ slug }));
 }
 
 export default async function DocsTitle(props: Params) {
   const params = await props.params;
-  const sectionAndTitle = getSectionAndTitleBySlug(params.slug, ReactDocConfig);
+  const sectionAndTitle = getSectionAndTitleBySlug(params.slug, ReactDocConfig, "react-docs");
   if (!sectionAndTitle) return null;
 
   return <Breadcrumb section={sectionAndTitle.section} title={sectionAndTitle.title} />;
