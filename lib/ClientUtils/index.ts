@@ -1,4 +1,4 @@
-import { DocConfig } from "../DocConfig";
+import { DocCategory } from "../DocConfig";
 
 const js = String.raw;
 
@@ -52,9 +52,12 @@ export const darkModeScript = js`
   }
 `;
 
-export function getSectionAndTitleBySlug(slug: string): { section: string; title: string } | null {
+export function getSectionAndTitleBySlug(
+  slug: string,
+  docConfig: DocCategory,
+): { section: string; title: string } | null {
   const currentPath = `/docs/${slug}`;
-  for (const [section, entries] of Object.entries(DocConfig)) {
+  for (const [section, entries] of Object.entries(docConfig)) {
     for (const [title, path, children] of entries) {
       if (path === currentPath) {
         return { section, title };

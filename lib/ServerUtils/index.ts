@@ -2,8 +2,8 @@ import { TOCEntry } from "@/components/TableOfContents/type";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-export async function getDocPageSlugs() {
-  const docsDir = path.join(process.cwd(), "docs");
+export async function getDocPageSlugs(subdir?: string) {
+  const docsDir = path.join(process.cwd(), "docs", ...(subdir ? [subdir] : []));
   const slugs = [];
   for (const file of await fs.readdir(docsDir)) {
     if (!file.endsWith(".mdx")) continue;
@@ -14,16 +14,18 @@ export async function getDocPageSlugs() {
 
 export async function getDocPageBySlug(
   slug: string,
+  subdir?: string,
 ): Promise<null | { Component: React.FC; title: string; description: string }> {
   try {
-    const filePath = path.join(process.cwd(), "docs", `${slug}.mdx`);
-    debugger;
+    const filePath = path.join(process.cwd(), "docs", ...(subdir ? [subdir] : []), `${slug}.mdx`);
     const stat = await fs.stat(filePath).catch(() => null);
     if (!stat) {
       return null;
     }
 
-    const mdxModule = await import(`@/docs/${slug}.mdx`);
+    const mdxModule = subdir
+      ? await import(`@/docs/${subdir}/${slug}.mdx`)
+      : await import(`@/docs/${slug}.mdx`);
     if (!mdxModule.default) {
       return null;
     }
@@ -34,15 +36,13 @@ export async function getDocPageBySlug(
       description: mdxModule.description,
     };
   } catch (e) {
-    debugger;
-
     console.error(e);
     return null;
   }
 }
 
-export async function generateTableOfContents(slug: string) {
-  const filePath = path.join(process.cwd(), "docs", `${slug}.mdx`);
+export async function generateTableOfContents(slug: string, subdir?: string) {
+  const filePath = path.join(process.cwd(), "docs", ...(subdir ? [subdir] : []), `${slug}.mdx`);
   // Check if the file exists
   if (!(await fs.stat(filePath).catch(() => false))) {
     return [];

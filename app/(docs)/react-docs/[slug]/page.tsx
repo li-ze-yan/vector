@@ -5,13 +5,13 @@ import { notFound } from "next/navigation";
 import { DocsProps } from "./type";
 
 export async function generateStaticParams() {
-  const slugs = await getDocPageSlugs();
+  const slugs = await getDocPageSlugs("react-docs");
   return slugs?.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata(props: DocsProps): Promise<Metadata> {
   const params = await props.params;
-  const post = await getDocPageBySlug(params.slug);
+  const post = await getDocPageBySlug(params.slug, "react-docs");
 
   if (!post) {
     return notFound();
@@ -29,8 +29,8 @@ export async function generateMetadata(props: DocsProps): Promise<Metadata> {
 export default async function DocPage(props: DocsProps) {
   const params = await props?.params;
   const [post, tableOfContents] = await Promise.all([
-    getDocPageBySlug(params.slug),
-    generateTableOfContents(params.slug),
+    getDocPageBySlug(params.slug, "react-docs"),
+    generateTableOfContents(params.slug, "react-docs"),
   ]);
 
   if (!post) {

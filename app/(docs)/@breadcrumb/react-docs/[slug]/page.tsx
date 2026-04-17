@@ -1,5 +1,6 @@
 import { Breadcrumb } from "@/components";
 import { getSectionAndTitleBySlug } from "@/lib/ClientUtils";
+import { ReactDocConfig } from "@/lib/DocConfig";
 import { getDocPageSlugs } from "@/lib/ServerUtils";
 
 type Params = {
@@ -15,7 +16,7 @@ export async function generateStaticParams() {
 
 export default async function DocsTitle(props: Params) {
   const params = await props.params;
-  const sectionAndTitle = getSectionAndTitleBySlug(params.slug);
+  const sectionAndTitle = getSectionAndTitleBySlug(params.slug, ReactDocConfig);
   if (!sectionAndTitle) return null;
 
   return <Breadcrumb section={sectionAndTitle.section} title={sectionAndTitle.title} />;

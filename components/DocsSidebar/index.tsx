@@ -1,5 +1,5 @@
 import { NavList, NavListHeading, NavListItem, NavListItems } from "@/components";
-import { DocConfig } from "@/lib/DocConfig";
+import { DocCategory } from "@/lib/DocConfig";
 import clsx from "clsx";
 import Link from "next/link";
 import { DocsSidebarLink } from "../DocsSidebarLink";
@@ -23,22 +23,22 @@ export function TopNavLink(props: { href: string } & React.ComponentPropsWithout
   );
 }
 
-export function DocsSidebar() {
+export function DocsSidebar({ docConfig }: { docConfig: DocCategory }) {
   return (
     <nav className="flex flex-col gap-8">
-      {Object.entries(DocConfig).map(([category, entries]) => (
+      {Object.entries(docConfig).map(([category, entries]) => (
         <NavList key={category} data-autoscroll>
           <NavListHeading>{category}</NavListHeading>
           <NavListItems>
             {entries.map(([title, path, children]) => (
               <NavListItem key={path}>
-                <DocsSidebarLink title={title} path={path} />
+                <DocsSidebarLink title={title} path={path?.replace("/docs/", "/")} />
 
                 {Array.isArray(children) && children.length > 0 && (
                   <NavListItems nested>
                     {children.map(([title, path]) => (
                       <NavListItem key={path}>
-                        <DocsSidebarLink title={title} path={path} nested />
+                        <DocsSidebarLink title={title} path={path?.replace("/docs/", "/")} nested />
                       </NavListItem>
                     ))}
                   </NavListItems>
