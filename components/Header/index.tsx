@@ -1,5 +1,6 @@
 "use client";
 
+import { MyGithub } from "@/lib/Constant";
 import { Dialog, DialogPanel } from "@headlessui/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -75,11 +76,8 @@ export function Header() {
           <Link href="/showcase" className="text-sm/6 text-gray-950 dark:text-white">
             Showcase
           </Link>
-          <Link href="/sponsor" className="text-sm/6 text-gray-950 dark:text-white">
-            Sponsor
-          </Link>
 
-          <Link href="https://github.com/tailwindlabs/tailwindcss" aria-label="GitHub repository">
+          <Link href={MyGithub} aria-label="GitHub repository">
             <GitHubLogo className="size-5 fill-black/40 dark:fill-gray-400" />
           </Link>
         </div>
@@ -111,12 +109,6 @@ export function Header() {
                   Docs
                 </Link>
                 <Link
-                  href="/plus/?ref=top"
-                  className="rounded-lg px-3 py-2 text-xl/9 font-medium text-gray-950 data-active:bg-gray-950/5 dark:text-white dark:hover:bg-white/10"
-                >
-                  Plus
-                </Link>
-                <Link
                   href="/blog"
                   className="rounded-lg px-3 py-2 text-xl/9 font-medium text-gray-950 data-active:bg-gray-950/5 dark:text-white dark:hover:bg-white/10"
                 >
@@ -129,13 +121,7 @@ export function Header() {
                   Showcase
                 </Link>
                 <Link
-                  href="/sponsor"
-                  className="rounded-lg px-3 py-2 text-xl/9 font-medium text-gray-950 data-active:bg-gray-950/5 dark:text-white dark:hover:bg-white/10"
-                >
-                  Sponsor
-                </Link>
-                <Link
-                  href="https://github.com/tailwindlabs/tailwindcss"
+                  href={MyGithub}
                   className="rounded-lg px-3 py-2 text-xl/9 font-medium text-gray-950 data-active:bg-gray-950/5 dark:text-white dark:hover:bg-white/10"
                 >
                   GitHub

@@ -69,3 +69,6 @@ export const ubuntuMono = localFont({
   ],
   variable: "--font-ubuntu-mono",
 });
+
+export const MyGithub = process.env.NEXT_PUBLIC_MY_GITHUB!;
+export const MyEmail = process.env.NEXT_PUBLIC_MY_EMAIL!;
