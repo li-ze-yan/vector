@@ -1,4 +1,4 @@
-import DocConfig from "../DocConfig";
+import { DocConfig } from "../DocConfig";
 
 const js = String.raw;
 

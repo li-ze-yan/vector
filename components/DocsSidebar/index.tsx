@@ -1,5 +1,5 @@
 import { NavList, NavListHeading, NavListItem, NavListItems } from "@/components";
-import DocConfig from "@/lib/DocConfig";
+import { DocConfig } from "@/lib/DocConfig";
 import clsx from "clsx";
 import Link from "next/link";
 import { DocsSidebarLink } from "../DocsSidebarLink";

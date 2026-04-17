@@ -1,4 +1,4 @@
-const DocConfig = {
+export const DocConfig = {
   Filters: [
     ["filter", "/docs/filter", [["blur", "/docs/filter-blur"]] as const] as const,
     [
@@ -9,4 +9,6 @@ const DocConfig = {
   ] as const,
 };
 
-export default DocConfig;
+// export type ReactDocsConfig = {
+
+// }
