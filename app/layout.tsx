@@ -1,5 +1,5 @@
 import { darkModeScript } from "@/lib/ClientUtils";
-import { inter, plexMono, source, ubuntuMono } from "@/lib/Constant";
+import { inter, plexMono, source, ubuntuMono } from "@/lib/constant";
 import Script from "next/script";
 import "./globals.css";
 

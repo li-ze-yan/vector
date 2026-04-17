@@ -1,6 +1,6 @@
 "use client";
 
-import { MyGithub, skills } from "@/lib/Constant";
+import { MyGithub, skills } from "@/lib/constant";
 import { Dialog, DialogPanel, Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
