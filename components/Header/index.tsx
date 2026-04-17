@@ -73,13 +73,16 @@ export function Header() {
                 {skills?.map((skill) => {
                   return (
                     <Link
-                      key={skill.title}
+                      key={skill?.title}
                       className="col-span-1 block rounded-lg px-3 py-2 transition hover:bg-gray-950/5 dark:hover:bg-white/5"
                       href="#"
                     >
-                      <p className="font-semibold">{skill.title}</p>
-                      <p className="max-w-52 line-clamp-2 text-xs/5 text-gray-500 dark:text-gray-600">
-                        {skill.description}
+                      <p className="font-semibold">{skill?.title}</p>
+                      <p
+                        title={skill?.description}
+                        className="max-w-52 line-clamp-2 text-xs/5 text-gray-500 dark:text-gray-600"
+                      >
+                        {skill?.description}
                       </p>
                     </Link>
                   );

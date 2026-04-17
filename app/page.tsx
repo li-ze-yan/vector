@@ -2,9 +2,30 @@
 
 import { DotGrid, Header } from "@/components";
 import { useSystemStore } from "@/stores";
+import { Theme } from "@/stores/SystemStore/type";
+import { useEffect, useState, useSyncExternalStore } from "react";
+
+const darkMQ = "(prefers-color-scheme: dark)";
+const subscribe = (cb: () => void) => {
+  const mq = window.matchMedia(darkMQ);
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+};
+const getSnapshot = () => window.matchMedia(darkMQ).matches;
+const getServerSnapshot = () => true;
 
 export default function Home() {
   const { theme } = useSystemStore();
+  const systemIsDark = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const [nowTheme, setNowTheme] = useState<Theme>();
+
+  useEffect(() => {
+    const handleChangeTheme = () => {
+      setNowTheme(theme === "system" ? (systemIsDark ? "dark" : "light") : theme);
+    };
+
+    handleChangeTheme();
+  }, [theme, systemIsDark]);
 
   return (
     <div className="max-w-screen overflow-x-hidden">
@@ -14,7 +35,7 @@ export default function Home() {
       <div className="flex justify-center items-center h-screen relative z-0">
         <div className="flex flex-col items-center gap-2">
           <h1
-            className="text-9xl font-extrabold italic"
+            className="text-5xl xl:text-9xl font-extrabold italic"
             style={{ fontFamily: "var(--font-ubuntu-mono)" }}
           >
             Vector Lab
@@ -30,8 +51,8 @@ export default function Home() {
           <DotGrid
             dotSize={5}
             gap={28}
-            baseColor="#2F293A"
-            activeColor="#5227FF"
+            baseColor={nowTheme === "dark" ? "#2F293A" : "#ccc"}
+            activeColor="#BC1013"
             proximity={120}
             shockRadius={250}
             shockStrength={5}

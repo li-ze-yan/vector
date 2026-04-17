@@ -6,7 +6,7 @@ import { IBaseSystem, Theme } from "./type";
 export const useSystemStore = create<IBaseSystem>()(
   persist(
     immer((set) => ({
-      theme: "system",
+      theme: null,
       setTheme: (theme: Theme) =>
         set((state) => {
           state.theme = theme;
