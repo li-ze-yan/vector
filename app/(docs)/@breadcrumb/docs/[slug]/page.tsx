@@ -1,5 +1,6 @@
 import { Breadcrumb } from "@/components";
-import { getDocPageSlugs, getSectionAndTitleBySlug } from "@/lib";
+import { getSectionAndTitleBySlug } from "@/lib/ClientUtils";
+import { getDocPageSlugs } from "@/lib/ServerUtils";
 
 type Params = {
   params: Promise<{
