@@ -1,0 +1,140 @@
+export const title = "useEffect";
+export const description = "useEffect 用于在函数组件中执行副作用操作，如数据获取、DOM 操作和事件订阅。";
+
+## 基本用法
+
+```tsx
+useEffect(() => {
+  // 副作用逻辑
+  return () => {
+    // 清理函数（可选）
+  };
+}, [dependencies]);
+```
+
+## Examples
+
+### 依赖数组的三种形式
+
+```tsx
+// 1. 无依赖数组 — 每次渲染后都执行
+useEffect(() => {
+  console.log("每次渲染后执行");
+});
+
+// 2. 空依赖数组 — 只在挂载时执行一次
+useEffect(() => {
+  console.log("只执行一次");
+}, []);
+
+// 3. 有依赖 — 依赖变化时执行
+useEffect(() => {
+  console.log(`userId changed: ${userId}`);
+}, [userId]);
+```
+
+### 数据获取
+
+```tsx
+function UserProfile({ userId }: { userId: string }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchUser() {
+      setLoading(true);
+      const res = await fetch(`/api/users/${userId}`);
+      const data = await res.json();
+      if (!cancelled) {
+        setUser(data);
+        setLoading(false);
+      }
+    }
+
+    fetchUser();
+    return () => { cancelled = true; }; // 防止竞态条件
+  }, [userId]);
+
+  if (loading) return <div>Loading...</div>;
+  return <div>{user?.name}</div>;
+}
+```
+
+### 事件订阅
+
+```tsx
+function useKeyPress(targetKey: string) {
+  const [pressed, setPressed] = useState(false);
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => e.key === targetKey && setPressed(true);
+    const up = (e: KeyboardEvent) => e.key === targetKey && setPressed(false);
+
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, [targetKey]);
+
+  return pressed;
+}
+```
+
+### 定时器
+
+```tsx
+function Timer() {
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(id); // 组件卸载时清除
+  }, []);
+
+  return <p>{seconds}s</p>;
+}
+```
+
+## 常见陷阱
+
+### 无限循环
+
+```tsx
+// 错误 — 每次渲染都创建新对象，导致无限循环
+useEffect(() => {
+  setUser({ name: "Alice" }); // 新对象 → 触发渲染 → 再次执行 effect
+});
+
+// 修复 — 添加正确的依赖数组
+useEffect(() => {
+  setUser({ name: "Alice" });
+}, []); // 只执行一次
+```
+
+### 闭包陷阱
+
+```tsx
+// 问题 — count 始终是初始值
+useEffect(() => {
+  const id = setInterval(() => {
+    console.log(count); // 始终打印 0
+  }, 1000);
+  return () => clearInterval(id);
+}, []); // count 不在依赖中
+
+// 修复 — 使用函数式更新或添加依赖
+useEffect(() => {
+  const id = setInterval(() => {
+    setCount((prev) => prev + 1); // 函数式更新，不依赖外部 count
+  }, 1000);
+  return () => clearInterval(id);
+}, []);
+```

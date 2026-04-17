@@ -1,0 +1,52 @@
+export const title = "状态管理";
+export const description = "React 状态管理方案概览，从组件内部状态到全局状态管理库。";
+
+## 概述
+
+随着应用规模增长，状态管理变得越来越重要。React 提供了从简单到复杂的多层次方案。
+
+### 状态管理层级
+
+| 层级 | 方案 | 适用场景 |
+|------|------|----------|
+| 组件内部 | `useState` / `useReducer` | 表单输入、UI 切换 |
+| 父子组件 | Props 传递 | 少量层级间通信 |
+| 跨层级 | [Context](/docs/react-state-context) | 主题、认证、语言 |
+| 全局 | [Zustand](/docs/react-state-zustand) / Redux | 复杂业务状态 |
+| 服务端 | React Query / SWR | 异步数据缓存 |
+
+### 选择原则
+
+```
+需要状态吗？
+├── 仅当前组件用 → useState
+├── 父子组件共享 → 状态提升 + Props
+├── 多层组件共享 → Context
+└── 全局复杂状态 → Zustand / Redux
+```
+
+### useState vs useReducer
+
+```tsx
+// useState — 简单状态
+const [count, setCount] = useState(0);
+
+// useReducer — 复杂状态逻辑
+type Action = { type: "increment" } | { type: "decrement" } | { type: "reset" };
+
+function reducer(state: number, action: Action) {
+  switch (action.type) {
+    case "increment": return state + 1;
+    case "decrement": return state - 1;
+    case "reset": return 0;
+  }
+}
+
+const [count, dispatch] = useReducer(reducer, 0);
+dispatch({ type: "increment" });
+```
+
+### 相关内容
+
+- [Context](/docs/react-state-context) — React 内置的跨组件状态方案
+- [Zustand](/docs/react-state-zustand) — 轻量级全局状态管理库

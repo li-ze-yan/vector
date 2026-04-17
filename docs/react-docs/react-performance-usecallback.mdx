@@ -1,0 +1,126 @@
+export const title = "useCallback";
+export const description = "useCallback 用于缓存回调函数的引用，避免因函数重新创建导致子组件不必要的重新渲染。";
+
+## 基本用法
+
+```tsx
+const memoizedCallback = useCallback(() => {
+  doSomething(a, b);
+}, [a, b]);
+```
+
+只有当依赖项 `[a, b]` 变化时才创建新函数，否则返回缓存的函数引用。
+
+## Examples
+
+### 配合 React.memo 使用
+
+```tsx
+const ExpensiveButton = React.memo(function ExpensiveButton({
+  onClick,
+  label,
+}: {
+  onClick: () => void;
+  label: string;
+}) {
+  console.log(`${label} rendered`);
+  return <button onClick={onClick}>{label}</button>;
+});
+
+function Toolbar() {
+  const [count, setCount] = useState(0);
+  const [text, setText] = useState("");
+
+  // 不用 useCallback — 每次输入 text 都会重新创建函数，导致 Button 重新渲染
+  // const handleClick = () => setCount(c => c + 1);
+
+  // 用 useCallback — 函数引用稳定，Button 不会因 text 变化而重新渲染
+  const handleClick = useCallback(() => {
+    setCount((c) => c + 1);
+  }, []);
+
+  return (
+    <div>
+      <input value={text} onChange={(e) => setText(e.target.value)} />
+      <ExpensiveButton onClick={handleClick} label={`Count: ${count}`} />
+    </div>
+  );
+}
+```
+
+### 带参数的回调
+
+```tsx
+function TodoList({ todos }: { todos: Todo[] }) {
+  const [items, setItems] = useState(todos);
+
+  const handleToggle = useCallback((id: number) => {
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, done: !item.done } : item)));
+  }, []);
+
+  const handleDelete = useCallback((id: number) => {
+    setItems((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
+  return (
+    <ul>
+      {items.map((todo) => (
+        <TodoItem key={todo.id} todo={todo} onToggle={handleToggle} onDelete={handleDelete} />
+      ))}
+    </ul>
+  );
+}
+```
+
+### 用于 useEffect 依赖
+
+```tsx
+function SearchResults({ query }: { query: string }) {
+  const [results, setResults] = useState([]);
+
+  // 稳定的函数引用，不会导致 useEffect 无限执行
+  const fetchResults = useCallback(async () => {
+    const res = await fetch(`/api/search?q=${query}`);
+    setResults(await res.json());
+  }, [query]); // 只在 query 变化时创建新函数
+
+  useEffect(() => {
+    fetchResults();
+  }, [fetchResults]);
+
+  return <ul>{results.map((r) => <li key={r.id}>{r.title}</li>)}</ul>;
+}
+```
+
+## useMemo vs useCallback
+
+```tsx
+// useCallback 缓存函数
+const fn = useCallback(() => doSomething(a), [a]);
+
+// 等价于 useMemo 返回函数
+const fn = useMemo(() => () => doSomething(a), [a]);
+```
+
+| | useMemo | useCallback |
+|---|---------|-------------|
+| 缓存对象 | 任意计算结果 | 函数引用 |
+| 返回值 | 计算结果 | 函数本身 |
+| 适用场景 | 耗时计算、对象/数组 | 传给子组件的回调 |
+
+## 何时不需要 useCallback
+
+```tsx
+// 不需要 — 没有传给 memo 组件
+function App() {
+  const handleClick = () => console.log("clicked");
+  return <button onClick={handleClick}>Click</button>; // button 不是 memo 组件
+}
+
+// 不需要 — 组件本身很轻量，重新渲染无所谓
+function SimpleList({ items }: { items: string[] }) {
+  return <ul>{items.map((s) => <li key={s}>{s}</li>)}</ul>;
+}
+```
+
+**原则：** `useCallback` 只在传给 `React.memo` 包裹的子组件或作为 `useEffect` 依赖时才有意义。

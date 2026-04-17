@@ -1,0 +1,84 @@
+export const title = "useMemo";
+export const description = "useMemo 用于缓存计算结果，避免在每次渲染时重复执行耗时的计算。";
+
+## 基本用法
+
+```tsx
+const memoizedValue = useMemo(() => computeExpensiveValue(a, b), [a, b]);
+```
+
+只有当依赖项 `[a, b]` 变化时才重新计算，否则返回缓存值。
+
+## Examples
+
+### 耗时计算
+
+```tsx
+function ProductList({ products, filter }: { products: Product[]; filter: string }) {
+  // 只在 products 或 filter 变化时重新过滤
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => p.name.toLowerCase().includes(filter.toLowerCase()));
+  }, [products, filter]);
+
+  return (
+    <ul>
+      {filteredProducts.map((p) => (
+        <li key={p.id}>{p.name} - ¥{p.price}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### 避免子组件重新渲染
+
+配合 `React.memo` 使用，保持引用稳定：
+
+```tsx
+const MemoizedChild = React.memo(function Child({ data }: { data: number[] }) {
+  return <div>{data.join(", ")}</div>;
+});
+
+function Parent({ items }: { items: Item[] }) {
+  // 不用 useMemo — 每次渲染都创建新数组，Child 每次都重新渲染
+  // const ids = items.map(item => item.id);
+
+  // 用 useMemo — 只在 items 变化时创建新数组
+  const ids = useMemo(() => items.map((item) => item.id), [items]);
+
+  return <MemoizedChild data={ids} />;
+}
+```
+
+### 缓存对象/数组
+
+```tsx
+function Chart({ rawData }: { rawData: number[] }) {
+  // 引用稳定，不会触发子组件不必要的重新渲染
+  const chartConfig = useMemo(
+    () => ({
+      labels: rawData.map((_, i) => `Day ${i + 1}`),
+      datasets: [{ data: rawData, color: "#5227FF" }],
+    }),
+    [rawData],
+  );
+
+  return <ChartComponent config={chartConfig} />;
+}
+```
+
+## 何时不需要 useMemo
+
+```tsx
+// 不需要 — 简单计算
+const fullName = useMemo(() => `${first} ${last}`, [first, last]);
+// 直接写就行
+const fullName = `${first} ${last}`;
+
+// 不需要 — 原始类型
+const isEven = useMemo(() => count % 2 === 0, [count]);
+// 直接写
+const isEven = count % 2 === 0;
+```
+
+**原则：** 只对真正耗时的计算或需要保持引用稳定的对象/数组使用 `useMemo`。不要过早优化。
