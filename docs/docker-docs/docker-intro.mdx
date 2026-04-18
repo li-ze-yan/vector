@@ -98,6 +98,31 @@ docker system prune -a      # 清理所有未被使用的镜像
 docker image prune          # 仅清理悬空镜像
 ```
 
+## 免 sudo 执行 docker
+
+即便当前账号是 sudoer，直接执行 `docker` 仍可能报：
+
+```
+permission denied while trying to connect to the docker API at unix:///var/run/docker.sock
+```
+
+原因：`docker` CLI 通过 `/var/run/docker.sock` 与 daemon 通讯，该 socket 默认属主 `root:docker`、权限 `0660`。只有 **`root` 或 `docker` 组成员**能直接调用，sudoer 身份与 `docker` 组成员身份是两码事。
+
+把当前用户加入 `docker` 组即可：
+
+```bash
+sudo usermod -aG docker $USER
+newgrp docker         # 或者退出重新登录 / 重开 SSH，使分组生效
+getent group docker   # 确认用户已在组里
+id -nG                # 查看当前会话的所属组包含 docker
+
+docker ps             # 不再需要 sudo
+```
+
+### 安全提示
+
+`docker` 组权限 ≈ root：组成员可通过将宿主机 `/` 挂载进容器实现本地提权。应严格控制能访问该账号的人员。如需更强隔离，可考虑 **rootless Docker** 或 **Podman**。
+
 ## 小结
 
 Docker 以容器化标准化了应用的构建、分发与运行方式，是现代云原生架构的基石。掌握上述指令即可应对大部分日常开发与运维场景。
