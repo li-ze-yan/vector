@@ -1,9 +1,8 @@
 "use client";
 
-import { useSystemStore } from "@/stores";
-import { Theme } from "@/stores/SystemStore/type";
 import { Radio, RadioGroup } from "@headlessui/react";
-import React from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { Theme } from "./type";
 
 function ThemeToggleButton(props: React.ComponentProps<typeof Radio>) {
   return (
@@ -14,18 +13,51 @@ function ThemeToggleButton(props: React.ComponentProps<typeof Radio>) {
   );
 }
 
-export function ThemeToggle() {
-  const { theme, setTheme } = useSystemStore();
+export const ThemeContext = createContext<{
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+}>({
+  theme: "system",
+  setTheme: () => {},
+});
 
-  const onChange = (data: Theme) => {
-    (window as any)._updateTheme(data);
-    setTheme(data);
-  };
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState<Theme>(null);
+
+  useEffect(() => {
+    const handleInitialTheme = () => {
+      const storedTheme = localStorage.getItem("currentTheme") as Theme;
+      if (storedTheme) {
+        setTheme(storedTheme);
+      } else {
+        setTheme("system");
+      }
+    };
+    handleInitialTheme();
+  }, []);
+
+  const themeValue = useMemo(() => ({ theme, setTheme }), [theme]);
+
+  return <ThemeContext.Provider value={themeValue}>{children}</ThemeContext.Provider>;
+}
+
+function onChange(theme: Theme, setTheme: (theme: Theme) => void) {
+  if (theme !== null) {
+    localStorage.setItem("currentTheme", theme);
+  } else {
+    localStorage.removeItem("currentTheme");
+  }
+  (window as any)._updateTheme(theme);
+  setTheme(theme);
+}
+
+export function ThemeToggle() {
+  const { theme, setTheme } = useContext(ThemeContext);
 
   return (
     <RadioGroup
       value={theme}
-      onChange={(value) => onChange(value)}
+      onChange={(value) => onChange(value, setTheme)}
       className="relative z-0 inline-grid grid-cols-3 gap-0.5 rounded-full bg-gray-950/5 p-0.75 text-gray-950 dark:bg-white/10 dark:text-white"
     >
       <ThemeToggleButton aria-label="System theme" value="system">

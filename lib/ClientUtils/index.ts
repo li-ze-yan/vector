@@ -41,7 +41,7 @@ export const darkModeScript = js`
     }
 
     try {
-      _updateTheme(JSON.parse(localStorage.getItem("system-store"))?.state?.theme)
+      _updateTheme(localStorage.currentTheme)
     } catch (_) {}
 
     try {

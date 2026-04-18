@@ -1,3 +1,4 @@
+import { ThemeProvider } from "@/components";
 import { darkModeScript } from "@/lib/ClientUtils";
 import { inter, plexMono, source, ubuntuMono } from "@/lib/constant";
 import Script from "next/script";
@@ -25,7 +26,11 @@ export default function RootLayout({
          */}
         <Script src={`data:text/javascript;base64,${btoa(darkModeScript)}`} />
       </head>
-      <body>{children}</body>
+      <body>
+        <ThemeProvider>
+          <div className="isolate">{children}</div>
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

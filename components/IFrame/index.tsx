@@ -1,15 +1,15 @@
 "use client";
 
-import { useSystemStore } from "@/stores";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { ThemeContext } from "../ThemeToggle";
 
 const css = String.raw;
 
 export function Iframe({ children, ...props }: React.ComponentProps<"iframe">) {
   const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
 
-  const { theme } = useSystemStore();
+  const { theme } = useContext(ThemeContext);
   useEffect(() => {
     if (!mountNode) return;
     // eslint-disable-next-line react-hooks/immutability

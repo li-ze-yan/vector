@@ -1,9 +1,8 @@
 "use client";
 
-import { DotGrid, Header } from "@/components";
-import { useSystemStore } from "@/stores";
-import { Theme } from "@/stores/SystemStore/type";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { DotGrid, Header, ThemeContext } from "@/components";
+import { Theme } from "@/components/ThemeToggle/type";
+import { useContext, useEffect, useState, useSyncExternalStore } from "react";
 
 const darkMQ = "(prefers-color-scheme: dark)";
 const subscribe = (cb: () => void) => {
@@ -15,7 +14,7 @@ const getSnapshot = () => window.matchMedia(darkMQ).matches;
 const getServerSnapshot = () => true;
 
 export default function Home() {
-  const { theme } = useSystemStore();
+  const { theme } = useContext(ThemeContext);
   const systemIsDark = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [nowTheme, setNowTheme] = useState<Theme>();
 

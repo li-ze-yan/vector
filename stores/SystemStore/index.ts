@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { IBaseSystem, Theme } from "./type";
 
+// 暂时废弃
 export const useSystemStore = create<IBaseSystem>()(
   persist(
     immer((set) => ({
