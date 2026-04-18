@@ -32,18 +32,8 @@ function Logo() {
   );
 }
 
-function TailwindMark(props: React.ComponentProps<"svg">) {
-  return (
-    <svg viewBox="0 0 34 24" fill="none" {...props}>
-      <path fill="transparent" d="M0 0H34V24H0z" />
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M16.668 2c-4.445 0-7.223 2.222-8.334 6.667 1.667-2.222 3.611-3.055 5.833-2.5 1.268.317 2.175 1.236 3.178 2.255C18.979 10.081 20.87 12 25 12c4.445 0 7.223-2.222 8.334-6.666-1.666 2.222-3.61 3.055-5.833 2.5-1.269-.318-2.175-1.237-3.178-2.255C22.69 3.919 20.8 2 16.668 2zM8.334 12C3.889 12 1.11 14.222 0 18.667c1.667-2.222 3.612-3.056 5.833-2.5 1.269.316 2.175 1.236 3.178 2.255C10.645 20.081 12.536 22 16.668 22c4.444 0 7.222-2.222 8.333-6.666-1.667 2.222-3.611 3.055-5.833 2.5-1.268-.317-2.175-1.238-3.177-2.255C14.356 13.92 12.463 12 8.334 12z"
-        fill="color(display-p3 .2196 .7412 .9725)"
-      />
-    </svg>
-  );
+function TailwindMark() {
+  return <img src="/imgs/common/icon.png" alt="" className="w-8 object-contain object-center" />;
 }
 
 export function Header() {
@@ -136,7 +126,7 @@ export function Header() {
           >
             <DialogPanel className="size-full overflow-y-auto">
               <div className="flex h-14 items-center justify-between px-4 py-4 sm:px-6">
-                <TailwindMark className="h-6" />
+                <TailwindMark />
                 <IconButton aria-label="Navigation" onClick={() => setNavIsOpen(false)}>
                   <svg viewBox="0 0 16 16" fill="currentColor" className="size-4">
                     <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
@@ -145,23 +135,12 @@ export function Header() {
               </div>
               <div className="grid grid-cols-1 gap-1 px-1 pb-1 sm:px-3 sm:pb-3">
                 <Link
-                  href="/docs"
+                  href={skills?.[0]?.path}
+                  onClick={() => setNavIsOpen(false)}
                   className="rounded-lg px-3 py-2 text-xl/9 font-medium text-gray-950 data-active:bg-gray-950/5 dark:text-white dark:hover:bg-white/10"
                 >
-                  Docs
+                  文档
                 </Link>
-                {/* <Link
-                  href="/blog"
-                  className="rounded-lg px-3 py-2 text-xl/9 font-medium text-gray-950 data-active:bg-gray-950/5 dark:text-white dark:hover:bg-white/10"
-                >
-                  Blog
-                </Link>
-                <Link
-                  href="/showcase"
-                  className="rounded-lg px-3 py-2 text-xl/9 font-medium text-gray-950 data-active:bg-gray-950/5 dark:text-white dark:hover:bg-white/10"
-                >
-                  Showcase
-                </Link> */}
                 <Link
                   href={MyGithub}
                   className="rounded-lg px-3 py-2 text-xl/9 font-medium text-gray-950 data-active:bg-gray-950/5 dark:text-white dark:hover:bg-white/10"
