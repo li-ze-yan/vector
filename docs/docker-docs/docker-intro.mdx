@@ -123,6 +123,479 @@ docker ps             # 不再需要 sudo
 
 `docker` 组权限 ≈ root：组成员可通过将宿主机 `/` 挂载进容器实现本地提权。应严格控制能访问该账号的人员。如需更强隔离，可考虑 **rootless Docker** 或 **Podman**。
 
+## 场景实战
+
+下文按日常开发运维常见的工作流组织，每个场景先讲清 **流程与目的**，再给出 **可直接复制的指令**。示例里统一用 `nginx:alpine`、`ubuntu:22.04`、`redis:7` 这类常见镜像，替换为自己的业务镜像即可。
+
+### 场景 1：后台运行一个长期服务
+
+**流程**：部署 Web/数据库这类长期运行的服务时，不希望终端被容器占用，也不希望关闭 SSH 就杀死进程。使用 `-d`（detach）让容器在后台运行，`--name` 给容器起一个稳定可读的名字，方便后续 `logs` / `exec` / `stop` 引用。启动后用 `docker ps` 确认进程状态，用 `docker logs` 查看初始化是否成功。
+
+```bash
+docker run -d --name web nginx:alpine
+docker ps                      # 确认 STATUS 为 Up
+docker logs -f web             # 查看启动日志，Ctrl+C 退出不会杀掉容器
+```
+
+### 场景 2：端口映射让外部访问容器
+
+**流程**：容器有自己的网络命名空间，外部默认访问不到内部端口。通过 `-p 宿主机端口:容器端口` 把容器端口发布到宿主机上，浏览器或其他机器访问宿主机 IP 的对应端口即可。如果只想在本机访问，可以绑定到 `127.0.0.1` 以避免暴露到公网。多个端口用多个 `-p` 即可。
+
+```bash
+docker run -d --name web -p 8080:80 nginx:alpine           # 外部可访问 http://<host>:8080
+docker run -d --name web -p 127.0.0.1:8080:80 nginx:alpine # 仅本机可访问
+docker run -d --name app -p 8080:80 -p 8443:443 myapp      # 多端口
+docker port web                                            # 查看映射关系
+```
+
+### 场景 3：挂载数据卷持久化数据
+
+**流程**：容器文件系统是临时的，容器删除即丢失。对数据库、上传目录这类需要持久化的内容，使用 **命名卷**（由 Docker 管理，跨主机迁移友好）或 **绑定挂载**（直接挂宿主目录，适合开发时热更新代码）。生产环境推荐命名卷；开发环境用 bind mount 方便直接编辑宿主机文件。
+
+```bash
+# 命名卷：Docker 托管，位置在 /var/lib/docker/volumes
+docker volume create pgdata
+docker run -d --name db -v pgdata:/var/lib/postgresql/data postgres:16
+
+# 绑定挂载：宿主机目录直接挂入容器
+docker run -d --name web -v $PWD/html:/usr/share/nginx/html:ro nginx:alpine
+
+# 只读挂载配置文件
+docker run -d -v $PWD/nginx.conf:/etc/nginx/nginx.conf:ro nginx:alpine
+```
+
+### 场景 4：容器异常退出自动重启
+
+**流程**：生产服务希望崩溃后自动拉起，或者宿主机重启后容器自动恢复。用 `--restart` 策略声明即可，无需额外的 systemd 封装。常用策略：`no`（默认不重启）、`on-failure[:max]`（非 0 退出才重启，可限重试次数）、`always`（总是重启，包括手动 stop 后 daemon 启动也会拉起）、`unless-stopped`（推荐：总是重启，但手动 `stop` 后不会因 daemon 重启而拉起）。
+
+```bash
+docker run -d --name web --restart unless-stopped -p 80:80 nginx:alpine
+docker run -d --name worker --restart on-failure:5 myworker         # 最多重启 5 次
+docker update --restart=always web                                  # 修改已有容器策略
+```
+
+### 场景 5：手动停止且不自动重启
+
+**流程**：运维窗口期、调试或排障时希望停机观察，不想让重启策略把容器立刻拉起。先把重启策略改为 `no`，再 `stop`；或者干脆用 `unless-stopped`，它的语义就是 "人工 stop 后保持停止"。`docker stop` 会发送 SIGTERM，默认等 10 秒再 SIGKILL，给应用一个优雅退出的机会。
+
+```bash
+docker update --restart=no web      # 先关闭自动重启
+docker stop web                     # 优雅停止（发 SIGTERM，10s 超时后 SIGKILL）
+docker stop -t 30 web               # 自定义超时
+docker kill web                     # 立即 SIGKILL（不推荐，除非卡死）
+```
+
+### 场景 6：删除容器与强制删除运行中的容器
+
+**流程**：容器停止后仍然占用磁盘和名字。清理用 `docker rm`。如果容器在运行，普通 `rm` 会拒绝，可用 `-f` 强制删除（等价于先 `kill` 再 `rm`）。批量清理所有已停止容器用 `docker container prune`。
+
+```bash
+docker stop web && docker rm web        # 常规流程
+docker rm -f web                        # 运行中也强删
+docker rm -fv web                       # 同时删除匿名卷（-v），避免垃圾卷堆积
+docker container prune                  # 清理所有已停止容器
+docker rm $(docker ps -aq -f status=exited)   # 按状态批量清理
+```
+
+### 场景 7：一次性任务：`--rm` 退出自动清理
+
+**流程**：跑脚本、临时编译、调试命令这类 **用完即走** 的场景，不想留下容器残骸。`--rm` 让容器退出时自动删除。配合 `-it` 得到交互式终端，非常适合 "借用一个干净环境" 的场景，比如临时跑一次 `python`、`node`、`psql`。
+
+```bash
+docker run -it --rm ubuntu:22.04 bash                       # 进入 shell，exit 后容器消失
+docker run -it --rm -v $PWD:/app -w /app node:20 npm test   # 在当前目录跑测试
+docker run --rm alpine date                                 # 执行单条命令
+```
+
+### 场景 8：进入正在运行的容器获取交互式终端
+
+**流程**：`docker run` 用来启动新容器，而 `docker exec` 用来 **在已运行容器里** 再开一个进程。最常见的用法是进去看日志、改配置、排障。注意这是在容器里起了一个额外的 shell，不会影响原主进程；退出 shell 容器仍在跑。镜像里如果没有 `bash`，退而求其次用 `sh`。
+
+```bash
+docker exec -it web bash                 # 进入容器获得交互式 shell
+docker exec -it web sh                   # alpine 等精简镜像用 sh
+docker exec -u root -it web bash         # 以 root 进入（容器若用非 root 用户启动）
+docker exec web ps -ef                   # 非交互式执行一条命令
+```
+
+### 场景 9：在容器里安装常用调试工具（vim、curl、ping）
+
+**流程**：生产镜像为了瘦身通常不带 `vim` / `curl` / `ps` / `ping`。临时调试时可以进入容器安装；但要清楚这些改动在容器删除后就没了，长期需要的工具应写进 Dockerfile。区分发行版用对应包管理器：Debian/Ubuntu 用 `apt`，Alpine 用 `apk`，CentOS/RHEL 用 `yum`/`dnf`。
+
+```bash
+# Debian / Ubuntu 系
+docker exec -it web bash -c "apt update && apt install -y vim curl iputils-ping procps"
+
+# Alpine 系（镜像很小，默认无 bash）
+docker exec -it web sh -c "apk add --no-cache vim curl busybox-extras procps"
+
+# CentOS / RHEL 系
+docker exec -it web bash -c "yum install -y vim curl iputils procps-ng"
+```
+
+更规范的做法是写进 Dockerfile（见场景 11），避免每次重建都要手动装。
+
+### 场景 10：构建自己的镜像
+
+**流程**：基于基础镜像把应用代码、依赖、启动命令打包成一个新镜像。核心命令是 `docker build`，需要一个 `Dockerfile` 和一个 **构建上下文**（通常是当前目录 `.`）。`-t` 指定名字和 tag，`-f` 指定非默认的 Dockerfile 路径。构建产物可 `docker images` 查看，能 `docker run` 运行，也能 `docker push` 推到仓库。
+
+```bash
+docker build -t myapp:1.0 .                     # 当前目录构建
+docker build -t myapp:1.0 -f deploy/Dockerfile . # 指定 Dockerfile
+docker build --no-cache -t myapp:1.0 .           # 忽略缓存重新构建
+docker build --build-arg VERSION=1.2 -t myapp .  # 传入构建参数
+docker images myapp                              # 查看构建结果
+```
+
+### 场景 11：编写 Dockerfile
+
+**流程**：Dockerfile 是构建镜像的 "菜谱"。核心指令：`FROM` 选基础镜像；`WORKDIR` 设工作目录；`COPY` / `ADD` 把文件拷进去；`RUN` 在构建时执行（装依赖、编译）；`ENV` 设环境变量；`EXPOSE` 声明端口（不真正发布）；`CMD` 指定默认启动命令，`ENTRYPOINT` 指定入口可执行文件。**优化要点**：把变动少的层写在前面利用缓存；合并 `RUN` 减少层数；多阶段构建分离编译与运行环境，瘦身效果显著。
+
+一个生产级 Node.js 多阶段示例：
+
+```dockerfile
+# syntax=docker/dockerfile:1.7
+# ---- 构建阶段 ----
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci                        # 先装依赖，利用层缓存
+COPY . .
+RUN npm run build
+
+# ---- 运行阶段 ----
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY package*.json ./
+EXPOSE 3000
+USER node                         # 非 root 运行更安全
+CMD ["node", "dist/server.js"]
+```
+
+配套一份 `.dockerignore` 避免把 `node_modules`、`.git` 塞进构建上下文：
+
+```
+node_modules
+.git
+.env
+*.log
+dist
+```
+
+### 场景 12：创建自定义子网（bridge 网络）
+
+**流程**：Docker 默认的 `bridge` 网络里容器之间只能用 IP 通信，不能用名字互相解析。自建一个 bridge 网络可以获得 **内置 DNS**：同网络内容器可以用容器名直接访问彼此，非常适合 "Web + DB + Cache" 这类微服务组合。还可以指定子网网段避免与企业内网冲突。
+
+```bash
+docker network create mynet                                      # 默认 bridge
+docker network create --driver bridge --subnet 172.28.0.0/16 \
+                     --gateway 172.28.0.1 mynet                  # 指定网段
+docker network ls                                                # 列出所有网络
+docker network inspect mynet                                     # 查看详情（含成员容器）
+```
+
+### 场景 13：容器加入子网并通过容器名互通
+
+**流程**：容器用 `--network` 加入自建网络后，Docker 内嵌的 DNS 会把容器名解析为它在该网络里的 IP。因此 Web 容器里直接 `curl http://db:5432` 就能连到名为 `db` 的容器，无需关心 IP 变化。也可以用 `--network-alias` 给容器再加一个 DNS 别名，适合主备切换或服务发现。
+
+```bash
+docker network create mynet
+docker run -d --name db     --network mynet -e POSTGRES_PASSWORD=pass postgres:16
+docker run -d --name cache  --network mynet redis:7
+docker run -d --name web    --network mynet -p 8080:80 myapp:1.0
+
+# 在 web 容器里验证 DNS
+docker exec -it web sh -c "getent hosts db && getent hosts cache"
+docker exec -it web sh -c "nc -zv db 5432 && nc -zv cache 6379"
+```
+
+### 场景 14：宿主机访问一个容器，该容器再通过子网访问其他容器
+
+**流程**：这是最典型的三层结构——**外部 → 网关容器（发布端口）→ 内部服务（不发布端口）**。只有面向用户的容器（如 Nginx、API 网关）做端口映射，后端 DB/Cache **不对外发布端口**，只通过自建子网暴露给同网络的容器。这样数据库端口不暴露到宿主机，安全性更高。
+
+```bash
+docker network create appnet
+
+# 后端：不加 -p，仅子网内可达
+docker run -d --name db    --network appnet -e POSTGRES_PASSWORD=pass postgres:16
+docker run -d --name cache --network appnet redis:7
+
+# 前端/网关：发布端口到宿主机，内部通过容器名访问后端
+docker run -d --name web --network appnet -p 8080:80 \
+  -e DB_HOST=db -e REDIS_HOST=cache myapp:1.0
+
+# 外部访问：浏览器 → 宿主机 8080 → web 容器 → （通过 appnet）→ db / cache
+curl http://localhost:8080/
+```
+
+如果某个容器需要同时属于多个网络（例如既连 `appnet` 又连 `monitornet`），启动后用 `docker network connect` 加入第二个网络即可。
+
+```bash
+docker network connect monitornet web
+docker network disconnect monitornet web
+```
+
+### 场景 15：host 网络模式——容器与宿主机共享网络栈
+
+**流程**：`--network host` 让容器直接使用宿主机的网络命名空间，不再有 NAT、不需要 `-p`，容器监听的端口就是宿主机端口。优点是 **性能最高、延迟最低**，适合高吞吐网络应用、需要抓大量本机端口的服务（如监控 Agent）。缺点是 **没有网络隔离**，端口冲突风险直接暴露，且只在 Linux 上原生支持（macOS/Windows 上行为受限）。
+
+```bash
+docker run -d --name web --network host nginx:alpine
+# 此时 nginx 直接监听宿主机 80，无需 -p
+ss -tlnp | grep :80
+
+# 适用于本机 Agent / 高性能场景
+docker run -d --name node_exporter --network host prom/node-exporter
+```
+
+### 场景 16：查看和管理网络
+
+**流程**：排查连通性问题时，先看网络拓扑：哪些网络存在、每个网络里有哪些容器、容器拿到了什么 IP。`inspect` 输出的 JSON 里 `Containers` 字段列出成员，`IPAM.Config` 是子网配置。清理无用网络用 `prune`。
+
+```bash
+docker network ls                          # 所有网络
+docker network inspect mynet               # 网络详情（含成员）
+docker inspect -f '{{json .NetworkSettings.Networks}}' web | jq   # 某容器所在的所有网络
+docker network rm mynet                    # 删除空网络
+docker network prune                       # 删除所有未使用的网络
+```
+
+### 场景 17：容器间文件拷贝
+
+**流程**：需要把宿主机文件塞进容器，或者从容器里捞日志/产物出来时，用 `docker cp`。语法是 `docker cp 源 目的`，两端任选一个可以是 `容器名:路径`。它不需要容器里装 `scp`，也不依赖挂载，适合临时操作。长期的文件共享仍建议用 volume。
+
+```bash
+docker cp ./config.yaml web:/etc/app/config.yaml    # 宿主机 → 容器
+docker cp web:/var/log/app.log ./app.log            # 容器 → 宿主机
+docker cp web:/etc/nginx/. ./nginx-backup/          # 拷目录（注意末尾的 /.）
+```
+
+### 场景 18：查看资源占用与容器元数据
+
+**流程**：线上排查慢、排查 OOM 时先看 `docker stats` 的实时 CPU/内存/网络 IO；要看配置（启动参数、挂载、网络、环境变量）用 `docker inspect`；看进程用 `docker top`。这些命令都是只读的，可以放心在生产跑。
+
+```bash
+docker stats                           # 实时资源占用（所有容器）
+docker stats web db                    # 指定容器
+docker top web                         # 容器内进程列表
+docker inspect web                     # 完整元数据（JSON）
+docker inspect -f '{{.State.Status}} {{.State.StartedAt}}' web   # 用 Go 模板取字段
+docker events                          # 实时事件流（启动、停止、OOM 等）
+```
+
+### 场景 19：给容器设置资源限制（CPU / 内存）
+
+**流程**：避免单个容器吃光宿主机资源。用 `--memory` 限内存（超过则 OOM Kill），`--cpus` 限 CPU 核数（小数表示部分核）。生产环境推荐给每个容器都设上限，配合监控观察实际用量再调整。
+
+```bash
+docker run -d --name app --memory=512m --memory-swap=512m --cpus=1.5 myapp
+docker update --memory=1g --cpus=2 app     # 运行时调整
+docker stats app                            # 观察实际使用
+```
+
+### 场景 20：环境变量与配置注入
+
+**流程**：12-Factor App 推荐用环境变量传配置。`-e` 一次一个，`--env-file` 从文件批量注入（生产常用，避免命令行泄露密钥）。敏感信息（密码、Token）建议用 Docker Secret 或外部秘密管理，不要写进镜像。
+
+```bash
+docker run -d -e APP_ENV=prod -e LOG_LEVEL=info myapp
+docker run -d --env-file ./prod.env myapp
+docker exec web env                     # 查看容器内环境变量
+```
+
+`prod.env` 示例：
+
+```
+APP_ENV=prod
+DB_HOST=db
+DB_PASSWORD=super-secret
+```
+
+### 场景 21：镜像推送到远程仓库
+
+**流程**：构建好的镜像要分发给其他机器或部署到生产时，推到镜像仓库（Docker Hub、GitHub Container Registry、Harbor、阿里云 ACR 等）。流程：登录 → 打上符合仓库规范的 tag（`registry/namespace/name:tag`）→ push。拉取端只需 `docker pull` 即可。
+
+```bash
+docker login registry.example.com                          # 登录仓库
+docker tag myapp:1.0 registry.example.com/team/myapp:1.0   # 打远程 tag
+docker push registry.example.com/team/myapp:1.0            # 推送
+docker pull registry.example.com/team/myapp:1.0            # 另一台机器拉取
+docker logout registry.example.com
+```
+
+### 场景 22：Docker Compose 编排多容器应用
+
+**流程**：当应用涉及多个容器（Web + DB + Cache + Worker）时，手工一条条 `docker run` 既繁琐又容易出错。Compose 用一个 `compose.yaml` 声明所有服务、网络、卷，一条命令启停全部。Compose 会 **自动创建一个默认网络**，所有服务在其中可以通过服务名互相访问，无需再手建网络。
+
+一份典型的 `compose.yaml`：
+
+```yaml
+services:
+  web:
+    build: .
+    image: myapp:1.0
+    ports:
+      - "8080:80"
+    environment:
+      DB_HOST: db
+      REDIS_HOST: cache
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_started
+    restart: unless-stopped
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: pass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  cache:
+    image: redis:7
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+```
+
+常用命令：
+
+```bash
+docker compose up -d            # 后台启动所有服务（会自动 build 需要构建的）
+docker compose up -d --build    # 强制重新 build
+docker compose ps               # 查看服务状态
+docker compose logs -f web      # 查看某服务日志
+docker compose exec web sh      # 进入某服务容器
+docker compose restart web      # 重启单个服务
+docker compose stop             # 停止但不删除
+docker compose down             # 停止并删除容器、网络（不删卷）
+docker compose down -v          # 连命名卷一起删（慎用！会丢数据）
+docker compose pull             # 拉取最新镜像
+docker compose config           # 校验并展开最终配置
+```
+
+### 场景 23：容器健康检查
+
+**流程**：仅靠 "进程活着" 不够，进程可能僵死但端口不响应。`HEALTHCHECK` 让 Docker 周期性执行一条命令判定容器健康。配合 Compose 的 `depends_on: condition: service_healthy`，可以让依赖服务等到上游真正 ready 再启动，避免启动顺序问题。
+
+Dockerfile 内声明：
+
+```dockerfile
+HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
+  CMD curl -fsS http://localhost/health || exit 1
+```
+
+运行时覆盖：
+
+```bash
+docker run -d --name web \
+  --health-cmd='curl -fsS http://localhost/ || exit 1' \
+  --health-interval=10s --health-retries=3 \
+  nginx:alpine
+
+docker inspect -f '{{json .State.Health}}' web | jq
+```
+
+### 场景 24：日志管理与排障
+
+**流程**：默认日志写在宿主机 `/var/lib/docker/containers/<id>/<id>-json.log`，长时间运行会撑爆磁盘。用 `--log-opt` 限制大小和文件数；或者切换 `--log-driver` 到 `journald`、`syslog`、`fluentd` 等集中化方案。
+
+```bash
+docker logs web                         # 查看全部日志
+docker logs -f --tail 100 web           # 实时尾 100 行
+docker logs --since 10m web             # 最近 10 分钟
+docker logs --timestamps web            # 带时间戳
+
+# 启动时限制日志大小
+docker run -d --name web \
+  --log-opt max-size=10m --log-opt max-file=5 \
+  nginx:alpine
+```
+
+### 场景 25：系统清理释放磁盘
+
+**流程**：长期使用后，停止的容器、悬空镜像（`<none>:<none>`）、旧构建缓存、未用的卷/网络都会堆积。先用 `docker system df` 看占用，再按需 prune。**`prune -a` 会删所有未被任何容器使用的镜像**，包括你 `pull` 下来但暂时没跑的，要谨慎。
+
+```bash
+docker system df                        # 磁盘占用总览
+docker system df -v                     # 详细到每个镜像/卷
+docker system prune                     # 清理已停止容器 + 悬空镜像 + 未用网络
+docker system prune -a                  # 再加上所有未被使用的镜像
+docker system prune -a --volumes        # 连未用卷也清（数据会丢！）
+docker builder prune                    # 只清 BuildKit 构建缓存
+docker image prune                      # 只清悬空镜像
+docker volume prune                     # 只清未挂载的卷
+```
+
+### 场景 26：保存 / 加载 / 导出 / 导入镜像
+
+**流程**：无外网环境下分发镜像，用 `save` + `load` 走 tar 文件；也可以 `export` 容器为 tar（丢失历史层，仅保留文件系统）再 `import` 成单层镜像。一般推荐 `save/load` 以保留镜像层结构。
+
+```bash
+docker save -o myapp-1.0.tar myapp:1.0            # 镜像 → tar
+docker load -i myapp-1.0.tar                      # tar → 镜像
+
+docker export -o web-fs.tar web                   # 容器文件系统 → tar
+cat web-fs.tar | docker import - myapp:flat       # tar → 单层镜像
+```
+
+### 场景 27：基于运行中容器提交为新镜像（临时快照）
+
+**流程**：调试中在容器里装了一堆东西，想保存现状，用 `docker commit` 打成镜像。**这只适合临时快照**，正式镜像一律用 Dockerfile 构建，保证可复现、可审计。
+
+```bash
+docker commit -m "add debug tools" -a "me" web myapp:debug
+docker run -it --rm myapp:debug bash
+```
+
+### 场景 28：以非 root 用户运行容器（安全加固）
+
+**流程**：容器默认以 root 运行，被攻破后危害大。在 Dockerfile 用 `USER` 切到非 root 用户；或运行时 `--user` 覆盖。进一步可以 `--read-only` 让根文件系统只读，`--cap-drop=ALL` 去掉多余 Linux capability，最后按需 `--cap-add` 加回必要权限。
+
+```bash
+docker run -d --name web \
+  --user 1000:1000 \
+  --read-only --tmpfs /tmp \
+  --cap-drop=ALL --cap-add=NET_BIND_SERVICE \
+  -p 8080:80 myapp:1.0
+```
+
+### 场景 29：macOS / Windows 上访问宿主机服务
+
+**流程**：容器里想连宿主机上的服务（如本机的数据库、调试代理），不能用 `localhost`（那指向容器自己）。Docker Desktop 提供一个特殊域名 `host.docker.internal` 解析到宿主机。Linux 上该域名默认无，需要加 `--add-host`。
+
+```bash
+docker run --rm curlimages/curl \
+  curl -sS http://host.docker.internal:8000/
+
+# Linux 上手动加映射（host-gateway 是 Docker 20.10+ 的特殊值）
+docker run --rm --add-host=host.docker.internal:host-gateway \
+  curlimages/curl curl -sS http://host.docker.internal:8000/
+```
+
+### 场景 30：GPU 容器（训练 / 推理）
+
+**流程**：机器学习工作负载用 `--gpus` 暴露 NVIDIA GPU 给容器（需宿主机装 `nvidia-container-toolkit`）。`all` 表示全部 GPU，`device=0,1` 指定卡号。镜像选官方 `nvidia/cuda` 或 PyTorch/TensorFlow 的 GPU 版。
+
+```bash
+docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi
+docker run -d --gpus '"device=0,1"' --name train \
+  -v $PWD:/workspace -w /workspace pytorch/pytorch:2.3.0-cuda12.1-cudnn8-runtime \
+  python train.py
+```
+
 ## 小结
 
 Docker 以容器化标准化了应用的构建、分发与运行方式，是现代云原生架构的基石。掌握上述指令即可应对大部分日常开发与运维场景。
