@@ -44,3 +44,7 @@ export const ReactDocConfig: DocCategory = {
     ],
   ],
 };
+
+export const DockerDocConfig: DocCategory = {
+  Docker: [["Docker入门", "/docs/docker-docs/docker-intro"]],
+};

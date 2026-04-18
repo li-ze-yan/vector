@@ -18,10 +18,14 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      // Backdrop Filters
       {
         source: "/react-docs",
         destination: "/react-docs/react-hooks",
+        permanent: false,
+      },
+      {
+        source: "/docker-docs",
+        destination: "/docker-docs/docker-intro",
         permanent: false,
       },
     ];

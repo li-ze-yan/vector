@@ -1,7 +1,11 @@
+"use client";
+
 import { NavList, NavListHeading, NavListItem, NavListItems } from "@/components";
-import { DocCategory } from "@/lib/doc-config";
+import { DocCategory, DockerDocConfig, ReactDocConfig } from "@/lib/doc-config";
 import clsx from "clsx";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { DocsSidebarLink } from "../DocsSidebarLink";
 
 export function TopNavLink(props: { href: string } & React.ComponentPropsWithoutRef<"a">) {
@@ -23,7 +27,19 @@ export function TopNavLink(props: { href: string } & React.ComponentPropsWithout
   );
 }
 
-export function DocsSidebar({ docConfig }: { docConfig: DocCategory }) {
+export function DocsSidebar() {
+  const pathname = usePathname();
+  const [docConfig, setDocConfig] = useState<DocCategory>({});
+
+  useEffect(() => {
+    const handleSetDocConfig = () => {
+      if (pathname.includes("/react-docs")) return setDocConfig(ReactDocConfig);
+      if (pathname.includes("/docker-docs")) return setDocConfig(DockerDocConfig);
+      setDocConfig({});
+    };
+    handleSetDocConfig();
+  }, [pathname]);
+
   return (
     <nav className="flex flex-col gap-8">
       {Object.entries(docConfig).map(([category, entries]) => (
