@@ -1,7 +1,14 @@
 "use client";
 
 import { MyGithub, skills } from "@/lib/constant";
-import { Dialog, DialogPanel, Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
+import {
+  CloseButton,
+  Dialog,
+  DialogPanel,
+  Popover,
+  PopoverButton,
+  PopoverPanel,
+} from "@headlessui/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -72,7 +79,8 @@ export function Header() {
               <div className="p-3 grid grid-cols-3 gap-1">
                 {skills?.map((skill) => {
                   return (
-                    <Link
+                    <CloseButton
+                      as={Link}
                       key={skill?.title}
                       className="col-span-1 block rounded-lg px-3 py-2 transition hover:bg-gray-950/5 dark:hover:bg-white/5"
                       href={skill?.path}
@@ -84,7 +92,7 @@ export function Header() {
                       >
                         {skill?.description}
                       </p>
-                    </Link>
+                    </CloseButton>
                   );
                 })}
               </div>
