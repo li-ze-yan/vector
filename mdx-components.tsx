@@ -28,10 +28,10 @@ function slugify(str: React.ReactNode) {
   return getTextContent(str)
     .toLowerCase()
     .trim() // Remove whitespace from both ends of a string
-    .replace(/\s+/g, "-") // Replace spaces with -
     .replace(/&/g, "-and-") // Replace & with 'and'
-    .replace(/[^\w\-]+/g, "") // Remove all non-word characters except for -
-    .replace(/\-\-+/g, "-"); // Replace multiple - with single -
+    .replace(/[^\p{L}\p{N}\s-]+/gu, "") // Keep Unicode letters/numbers (incl. CJK), whitespace, hyphen
+    .replace(/\s+/g, "-") // Replace spaces with -
+    .replace(/-{2,}/g, "-"); // Replace multiple - with single -
 }
 
 function createHeading(level: 1 | 2 | 3 | 4 | 5 | 6) {
