@@ -1,5 +1,5 @@
 import { ThemeProvider } from "@/components";
-import { darkModeScript } from "@/lib/ClientUtils";
+import { darkModeScript } from "@/lib/client-utils";
 import { inter, plexMono, source, ubuntuMono } from "@/lib/constant";
 import Script from "next/script";
 import "./globals.css";

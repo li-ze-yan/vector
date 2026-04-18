@@ -1,5 +1,5 @@
 import { TableOfContents } from "@/components";
-import { generateTableOfContents, getDocPageBySlug, getDocPageSlugs } from "@/lib/ServerUtils";
+import { generateTableOfContents, getDocPageBySlug, getDocPageSlugs } from "@/lib/server-utils";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DocsProps } from "./type";

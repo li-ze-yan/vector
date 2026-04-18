@@ -1,7 +1,7 @@
 import { Breadcrumb } from "@/components";
-import { getSectionAndTitleBySlug } from "@/lib/ClientUtils";
-import { ReactDocConfig } from "@/lib/DocConfig";
-import { getDocPageSlugs } from "@/lib/ServerUtils";
+import { getSectionAndTitleBySlug } from "@/lib/client-utils";
+import { ReactDocConfig } from "@/lib/doc-config";
+import { getDocPageSlugs } from "@/lib/server-utils";
 
 type Params = {
   params: Promise<{

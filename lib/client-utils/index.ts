@@ -1,4 +1,4 @@
-import { DocCategory } from "../DocConfig";
+import { DocCategory } from "../doc-config";
 
 const js = String.raw;
 

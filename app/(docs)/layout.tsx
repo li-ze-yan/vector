@@ -1,5 +1,5 @@
 import { DocsSidebar, DocsSidebarAutoscroll, Header, MobileDocsNav } from "@/components";
-import { ReactDocConfig } from "@/lib/DocConfig";
+import { ReactDocConfig } from "@/lib/doc-config";
 
 export default async function Layout({
   children,
