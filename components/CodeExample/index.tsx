@@ -244,5 +244,7 @@ const highlighter = await createHighlighter({
     "md",
     "erb",
     "rb",
+    "dockerfile",
+    "yaml",
   ],
 });
