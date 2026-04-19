@@ -43,5 +43,9 @@ export const DockerDocConfig: DocCategory = {
 };
 
 export const PostgreSQLDocConfig: DocCategory = {
-  PostgreSQL: [["PostgreSQL 概述", "/docs/postgresql-docs/postgresql-overview"]],
+  PostgreSQL: [
+    ["概述", "/docs/postgresql-docs/postgresql-overview"],
+    ["基本结构", "/docs/postgresql-docs/postgresql-basic-structure"],
+    ["表结构定义", "/docs/postgresql-docs/postgresql-table-structure"],
+  ],
 };
