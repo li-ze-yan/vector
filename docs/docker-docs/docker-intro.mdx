@@ -31,6 +31,31 @@ Docker 通过容器化技术将应用及其依赖打包为轻量级、可移植�
 
 Docker Hub 提供海量官方与社区镜像（数据库、消息队列、语言运行时等），开箱即用，大幅降低环境搭建成本。
 
+### 安装
+
+```bash
+# Ubuntu
+curl -fsSL https://get.docker.com -o install-docker.sh
+sudo sh install-docker.sh
+```
+
+### 设置镜像源
+
+```bash
+# 创建或编辑 daemon.json
+sudo vi /etc/docker/daemon.json
+
+{
+    "registry-mirrors": [
+        "https://docker.m.daocloud.io",
+        "https://docker.1panel.live",
+        "https://hub.rat.dev"
+    ]
+}
+# 重启 Docker 服务
+sudo service docker restart
+```
+
 ## 常用指令
 
 ### 镜像管理
