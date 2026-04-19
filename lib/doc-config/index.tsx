@@ -1,13 +1,6 @@
 export type DocItem = readonly [title: string, path: string, children?: readonly DocItem[]];
 export type DocCategory = Record<string, readonly DocItem[]>;
 
-export const DocConfig: DocCategory = {
-  Filters: [
-    ["filter", "/docs/filter", [["blur", "/docs/filter-blur"]]],
-    ["backdrop-filter", "/docs/backdrop-filter", [["blur", "/docs/backdrop-filter-blur"]]],
-  ],
-};
-
 export const ReactDocConfig: DocCategory = {
   React: [
     [
