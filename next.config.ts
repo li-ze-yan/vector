@@ -28,6 +28,11 @@ const nextConfig: NextConfig = {
         destination: "/docker-docs/docker-intro",
         permanent: false,
       },
+      {
+        source: "/postgresql-docs",
+        destination: "/postgresql-docs/postgresql-overview",
+        permanent: false,
+      },
     ];
   },
 };

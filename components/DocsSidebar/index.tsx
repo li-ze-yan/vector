@@ -1,7 +1,12 @@
 "use client";
 
 import { NavList, NavListHeading, NavListItem, NavListItems } from "@/components";
-import { DocCategory, DockerDocConfig, ReactDocConfig } from "@/lib/doc-config";
+import {
+  DocCategory,
+  DockerDocConfig,
+  PostgreSQLDocConfig,
+  ReactDocConfig,
+} from "@/lib/doc-config";
 import clsx from "clsx";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -35,6 +40,7 @@ export function DocsSidebar() {
     const handleSetDocConfig = () => {
       if (pathname.includes("/react-docs")) return setDocConfig(ReactDocConfig);
       if (pathname.includes("/docker-docs")) return setDocConfig(DockerDocConfig);
+      if (pathname.includes("/postgresql-docs")) return setDocConfig(PostgreSQLDocConfig);
       setDocConfig({});
     };
     handleSetDocConfig();

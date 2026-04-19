@@ -41,3 +41,7 @@ export const ReactDocConfig: DocCategory = {
 export const DockerDocConfig: DocCategory = {
   Docker: [["Docker入门", "/docs/docker-docs/docker-intro"]],
 };
+
+export const PostgreSQLDocConfig: DocCategory = {
+  PostgreSQL: [["PostgreSQL 概述", "/docs/postgresql-docs/postgresql-overview"]],
+};

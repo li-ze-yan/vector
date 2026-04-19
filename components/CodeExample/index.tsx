@@ -53,7 +53,7 @@ export async function CodeExample({
 }) {
   return (
     <CodeExampleWrapper className={className}>
-      <div className="relative">
+      <div className="group/code-block relative">
         {filename ? <CodeExampleFilename filename={filename} /> : null}
         {copyable && (
           <CopyButton
@@ -66,8 +66,8 @@ export async function CodeExample({
             value={stripShikiComments(example.code)}
           />
         )}
+        <HighlightedCode example={example} />
       </div>
-      <HighlightedCode example={example} />
     </CodeExampleWrapper>
   );
 }
