@@ -1,188 +1,590 @@
 export const title = "表结构定义";
-export const description = "PostgreSQL 核心数据类型与列约束的完整说明。";
+export const description = "PostgreSQL 核心数据类型与列约束的完整说明，涵盖常见与特殊场景。";
 
 ## 核心数据类型（Data Types）
 
+PostgreSQL 拥有最丰富的内置数据类型体系之一。下面按使用频率与复杂度分类详述。
+
 ### 数值类型
 
+#### 整数
+
+| 类型 | 字节 | 范围 | 说明 |
+|------|------|------|------|
+| `SMALLINT` / `INT2` | 2 | -32,768 ~ 32,767 | 小范围整数，节省空间 |
+| `INTEGER` / `INT` / `INT4` | 4 | -2,147,483,648 ~ 2,147,483,647 | 默认整数类型 |
+| `BIGINT` / `INT8` | 8 | ±9.2×10^18 | 大整数，推荐主键使用 |
+
+#### 自增整数
+
 ```sql
--- 整数
-SMALLINT          -- 2 字节，-32768 ~ 32767
-INTEGER / INT     -- 4 字节，-2^31 ~ 2^31-1
-BIGINT            -- 8 字节，-2^63 ~ 2^63-1
+-- 传统 serial 语法（底层创建独立 SEQUENCE 并关联）
+CREATE TABLE t_old (
+  id SMALLSERIAL PRIMARY KEY,   -- 2 字节自增
+  id2 SERIAL,                   -- 4 字节自增
+  id3 BIGSERIAL                 -- 8 字节自增
+);
 
--- 自增整数（底层是序列 SEQUENCE）
-SMALLSERIAL       -- 2 字节自增
-SERIAL            -- 4 字节自增
-BIGSERIAL         -- 8 字节自增
+-- SQL 标准的 IDENTITY 列（推荐，PostgreSQL 10+）
+CREATE TABLE t_new (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  -- ALWAYS: 禁止手动插入值（除非 OVERRIDING SYSTEM VALUE）
+  -- BY DEFAULT: 允许手动插入（等价于 SERIAL 的行为）
+  name TEXT
+);
 
--- 精确小数（金融场景推荐）
-NUMERIC(precision, scale)   -- 例：NUMERIC(10, 2) 表示最多 10 位，2 位小数
-DECIMAL(precision, scale)   -- 与 NUMERIC 等价
+-- 定制序列参数
+CREATE TABLE t_custom (
+  id BIGINT GENERATED ALWAYS AS IDENTITY
+    (START WITH 1000 INCREMENT BY 10 MINVALUE 1000 MAXVALUE 99999 CYCLE)
+    PRIMARY KEY
+);
 
--- 浮点数（科学计算，存在精度误差）
-REAL              -- 4 字节单精度
-DOUBLE PRECISION  -- 8 字节双精度
+-- 查询 / 修改 / 重置序列
+SELECT nextval('t_new_id_seq');
+SELECT currval('t_new_id_seq');
+SELECT setval('t_new_id_seq', 1000);
+ALTER SEQUENCE t_new_id_seq RESTART WITH 1;
 ```
+
+#### 任意精度数值
+
+```sql
+NUMERIC(precision, scale)  -- 精确小数，金融场景首选
+DECIMAL(precision, scale)  -- 与 NUMERIC 完全等价
+
+-- 例：
+NUMERIC(10, 2)   -- 最多 10 位数字，其中 2 位小数，范围 -99999999.99 ~ 99999999.99
+NUMERIC(5)       -- 仅整数，0 ~ 99999
+NUMERIC          -- 无限精度，可存储任意大小数字
+```
+
+> `NUMERIC` 计算不会丢失精度，但比整数慢得多。对精度要求不高的统计场景优先选整数或浮点。
+
+#### 浮点数
+
+```sql
+REAL              -- 4 字节，约 6 位有效数字
+DOUBLE PRECISION  -- 8 字节，约 15 位有效数字
+-- 特殊值：'Infinity', '-Infinity', 'NaN'
+```
+
+#### 货币类型
+
+```sql
+MONEY             -- 8 字节，根据 lc_monetary 语言环境格式化
+-- 现代项目不推荐（多币种与精度都更适合用 NUMERIC(19,4) + 币种列）
+```
+
+---
 
 ### 字符类型
 
 ```sql
-CHAR(n)           -- 定长，不足则右补空格，很少使用
-VARCHAR(n)        -- 变长，最多 n 个字符
-TEXT              -- 变长，无长度限制（推荐，性能与 VARCHAR 相同）
+CHAR(n) / CHARACTER(n)               -- 定长，不足补空格，实践中几乎不用
+VARCHAR(n) / CHARACTER VARYING(n)    -- 变长，最多 n 字符（超过报错）
+VARCHAR                              -- 变长，无长度限制
+TEXT                                 -- 变长，无长度限制（推荐）
+"char"                               -- 单字节内部类型（极少使用）
+NAME                                 -- 系统表标识符类型（63 字节）
 ```
 
-> PostgreSQL 中 `TEXT` 与 `VARCHAR` 性能完全一致，无需为性能而选 `CHAR`。
+**选型建议：** PostgreSQL 中 `VARCHAR(n)`、`VARCHAR`、`TEXT` 底层实现完全相同，性能无差别。推荐统一用 `TEXT`，长度校验放在应用层或用 `CHECK (length(col) <= n)`。
+
+```sql
+-- 常用字符串函数
+LENGTH(str)                    -- 字符数
+OCTET_LENGTH(str)              -- 字节数
+UPPER(str) / LOWER(str)
+SUBSTRING(str FROM 1 FOR 3)    -- 或 SUBSTR(str, 1, 3)
+POSITION('b' IN 'abc')         -- 2
+TRIM(BOTH ' ' FROM str)        -- LTRIM / RTRIM
+REPLACE(str, 'old', 'new')
+SPLIT_PART('a,b,c', ',', 2)    -- 'b'
+CONCAT(a, b, c)                -- NULL 自动忽略
+CONCAT_WS(',', a, b, c)        -- 带分隔符
+str ILIKE 'abc%'               -- 大小写不敏感模糊匹配
+str ~ '^[A-Z]+$'               -- 正则匹配，!~ 不匹配，~* 不区分大小写
+REGEXP_REPLACE(str, 'a(.)c', '\1')   -- 正则替换
+REGEXP_MATCHES(str, '(\d+)', 'g')    -- 正则提取，返回数组
+```
+
+---
 
 ### 布尔类型
 
 ```sql
-BOOLEAN           -- TRUE / FALSE / NULL
--- 可接受的输入：true/false, yes/no, on/off, 1/0
+BOOLEAN / BOOL    -- 1 字节，TRUE / FALSE / NULL
+
+-- 接受的输入值
+-- TRUE:  't', 'true', 'y', 'yes', 'on',  '1'
+-- FALSE: 'f', 'false', 'n', 'no',  'off', '0'
+
+-- 查询示例
+SELECT * FROM users WHERE active;          -- 等价 active = TRUE
+SELECT * FROM users WHERE NOT active;
+SELECT * FROM users WHERE active IS TRUE;  -- 严格匹配（NULL 不匹配）
 ```
+
+---
 
 ### 日期与时间类型
 
 ```sql
-DATE              -- 仅日期，如 '2024-01-15'
-TIME              -- 仅时间，如 '14:30:00'
-TIMESTAMP         -- 日期+时间，不含时区
-TIMESTAMPTZ       -- 日期+时间+时区（推荐，内部存储为 UTC）
-INTERVAL          -- 时间间隔，如 INTERVAL '3 days 2 hours'
+DATE                  -- 4 字节，仅日期：'2026-04-20'
+TIME [ (p) ]          -- 8 字节，仅时间：'14:30:00.123'
+TIME WITH TIME ZONE   -- 12 字节，带时区时间（不推荐，存歧义）
+TIMESTAMP [ (p) ]     -- 8 字节，日期+时间，不含时区
+TIMESTAMPTZ           -- 8 字节，日期+时间+时区（推荐）
+INTERVAL              -- 16 字节，时间间隔
 ```
 
+#### TIMESTAMP vs TIMESTAMPTZ
+
+- `TIMESTAMP`：存你给的墙钟时间，不做时区转换。适合"这张票的演出时间是 19:30"这类与时区无关的场景。
+- `TIMESTAMPTZ`：**内部存储为 UTC**，写入时按会话时区转换为 UTC，读出时按会话时区转换回来。适合跨时区业务。
+
 ```sql
--- 常用时间函数
-SELECT NOW();                            -- 当前时间（含时区）
-SELECT CURRENT_DATE;                     -- 当前日期
-SELECT NOW() - INTERVAL '7 days';        -- 7 天前
-SELECT DATE_TRUNC('month', NOW());       -- 本月第一天
-SELECT EXTRACT(YEAR FROM NOW());         -- 提取年份
+SET TIME ZONE 'Asia/Shanghai';
+SELECT NOW();   -- 返回上海时间
+SET TIME ZONE 'UTC';
+SELECT NOW();   -- 同一瞬间，但显示 UTC 时间
 ```
+
+#### INTERVAL
+
+```sql
+INTERVAL '1 year 2 months 3 days 4 hours 5 minutes 6 seconds'
+INTERVAL '90 days'
+INTERVAL '1.5 hours'
+
+-- 运算
+SELECT NOW() - INTERVAL '1 day';
+SELECT '2026-01-01'::DATE + INTERVAL '3 months';
+```
+
+#### 常用日期时间函数
+
+```sql
+NOW() / CURRENT_TIMESTAMP      -- 当前时间戳（带时区）
+CURRENT_DATE                   -- 当前日期
+CURRENT_TIME                   -- 当前时间
+LOCALTIMESTAMP                 -- 当前时间戳（不带时区）
+
+-- 提取字段
+EXTRACT(YEAR   FROM ts)        -- 年
+EXTRACT(MONTH  FROM ts)        -- 月
+EXTRACT(DAY    FROM ts)        -- 日
+EXTRACT(HOUR   FROM ts)        -- 时
+EXTRACT(DOW    FROM ts)        -- 周几（0=周日）
+EXTRACT(ISODOW FROM ts)        -- ISO 周几（1=周一, 7=周日）
+EXTRACT(EPOCH  FROM ts)        -- Unix 时间戳（秒）
+
+-- 截断
+DATE_TRUNC('day',     NOW())   -- 2026-04-20 00:00:00
+DATE_TRUNC('week',    NOW())   -- 本周一 00:00:00
+DATE_TRUNC('month',   NOW())   -- 本月 1 日 00:00:00
+DATE_TRUNC('quarter', NOW())   -- 本季度第一天
+DATE_TRUNC('year',    NOW())   -- 今年 1 月 1 日
+
+-- 格式化（输入）
+TO_TIMESTAMP('2026-04-20 14:30:00', 'YYYY-MM-DD HH24:MI:SS')
+TO_DATE('20260420', 'YYYYMMDD')
+
+-- 格式化（输出）
+TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS')
+TO_CHAR(NOW(), 'FMMonth DD, YYYY')   -- "April 20, 2026"
+
+-- 时区转换
+ts AT TIME ZONE 'UTC'           -- TIMESTAMPTZ → TIMESTAMP (UTC 墙钟)
+ts AT TIME ZONE 'Asia/Tokyo'    -- 转为东京墙钟
+
+-- 年龄
+AGE(TIMESTAMP '2026-01-01')     -- 与当前差值 INTERVAL
+AGE(t1, t2)                     -- 两时间差
+```
+
+---
 
 ### JSON 类型
 
 ```sql
-JSON              -- 存储原始 JSON 文本，每次查询重新解析
-JSONB             -- 二进制格式存储，支持索引，查询更快（推荐）
+JSON    -- 存原始文本，保留键顺序与空白，每次解析
+JSONB   -- 二进制格式，去重键（最后一个有效），支持 GIN 索引（推荐）
 ```
+
+#### 常用操作符
+
+| 操作符 | 作用 | 示例 |
+|--------|------|------|
+| `->` | 取子对象（返回 JSON） | `payload->'user'` |
+| `->>` | 取子对象（返回文本） | `payload->>'name'` |
+| `#>` | 按路径取（JSON） | `payload#>'{user,address,city}'` |
+| `#>>` | 按路径取（文本） | `payload#>>'{user,name}'` |
+| `@>` | 包含（左包含右） | `payload @> '{"type":"login"}'` |
+| `<@` | 被包含 | `'{"a":1}' <@ payload` |
+| `?` | 存在键 | `payload ? 'email'` |
+| `?\|` | 存在任一键 | `payload ?\| array['a','b']` |
+| `?&` | 存在所有键 | `payload ?& array['a','b']` |
+| `\|\|` | 合并 | `a \|\| b` |
+| `-` | 删除键/下标 | `payload - 'tmp'` |
+| `#-` | 按路径删除 | `payload #- '{user,tmp}'` |
+
+#### 构造与修改
 
 ```sql
--- JSONB 示例
-CREATE TABLE events (
-  id      BIGSERIAL PRIMARY KEY,
-  payload JSONB NOT NULL
-);
+-- 构造
+SELECT jsonb_build_object('name', 'alice', 'age', 30);
+SELECT jsonb_build_array(1, 'a', TRUE, NULL);
+SELECT to_jsonb(ROW(1, 'a', TRUE));
+SELECT row_to_json(users) FROM users;
 
-INSERT INTO events (payload)
-VALUES ('{"type": "login", "user_id": 42, "tags": ["web", "mobile"]}');
+-- 修改
+SELECT jsonb_set(payload, '{user,name}', '"bob"');               -- 设置路径
+SELECT jsonb_set(payload, '{tags,0}', '"hot"');                  -- 替换数组元素
+SELECT jsonb_insert(payload, '{tags,0}', '"new"', FALSE);        -- 插入
+SELECT payload - 'tmp';                                          -- 删键
+SELECT payload #- '{user,password}';                             -- 深路径删除
 
--- 按键查询
-SELECT payload->>'type' FROM events;               -- 返回文本
-SELECT payload->'user_id' FROM events;             -- 返回 JSONB
+-- 展开
+SELECT jsonb_each(payload);                                      -- (key, value) 行集
+SELECT jsonb_object_keys(payload);                               -- 所有键
+SELECT jsonb_array_elements(payload->'tags');                    -- 数组展开
+SELECT jsonb_array_elements_text(payload->'tags');               -- 展开为文本
+SELECT jsonb_path_query(payload, '$.users[*] ? (@.age > 18)');   -- JSONPath 查询
 
--- 数组元素
-SELECT payload->'tags'->0 FROM events;             -- 返回 "web"
-
--- 条件过滤
-SELECT * FROM events WHERE payload @> '{"type": "login"}';
-
--- 建索引
-CREATE INDEX idx_events_payload ON events USING GIN (payload);
+-- 聚合
+SELECT jsonb_agg(name) FROM users;
+SELECT jsonb_object_agg(id, name) FROM users;
 ```
+
+#### JSONB 索引
+
+```sql
+-- GIN 索引：支持 @>, ?, ?|, ?& 操作符
+CREATE INDEX idx_events_payload ON events USING GIN (payload);
+
+-- GIN jsonb_path_ops：只支持 @>，但体积更小、更快
+CREATE INDEX idx_events_payload ON events USING GIN (payload jsonb_path_ops);
+
+-- 表达式索引：仅对特定路径建索引
+CREATE INDEX idx_events_type ON events ((payload->>'type'));
+```
+
+---
 
 ### 数组类型
 
+任何内置类型、用户自定义类型后加 `[]` 都能变成数组。
+
 ```sql
--- 任意类型都可以变成数组
-CREATE TABLE products (
-  id    SERIAL PRIMARY KEY,
-  tags  TEXT[],
-  scores INT[]
+CREATE TABLE t (
+  tags        TEXT[],                  -- 一维
+  matrix      INT[][],                 -- 二维（声明时维度不强制）
+  fixed       VARCHAR(10)[5]           -- 维度同样不强制，仅文档作用
 );
 
-INSERT INTO products (tags, scores) VALUES
-  (ARRAY['electronics', 'sale'], ARRAY[95, 88, 72]);
+-- 插入
+INSERT INTO t (tags, matrix) VALUES
+  (ARRAY['a','b','c'], ARRAY[[1,2],[3,4]]),
+  ('{"x","y"}',        '{{5,6},{7,8}}');  -- 字面量写法
 
--- 查询包含某元素的行
-SELECT * FROM products WHERE 'sale' = ANY(tags);
+-- 访问（下标从 1 开始）
+SELECT tags[1]         FROM t;     -- 第一个元素
+SELECT tags[2:3]       FROM t;     -- 切片
+SELECT matrix[1][2]    FROM t;     -- 多维
 
--- 数组操作
-SELECT tags[1] FROM products;                     -- 下标从 1 开始
-SELECT array_length(scores, 1) FROM products;     -- 数组长度
-SELECT unnest(tags) FROM products;                -- 展开为多行
+-- 运算
+SELECT tags || 'd'              FROM t;   -- 追加
+SELECT 'z' = ANY(tags)          FROM t;   -- 存在
+SELECT ARRAY[1,2] && ARRAY[2,3]           -- 交集非空：TRUE
+SELECT tags @> ARRAY['a']       FROM t;   -- 包含
+SELECT array_length(tags, 1)    FROM t;
+SELECT array_position(tags,'b') FROM t;
+SELECT array_remove(tags, 'a')  FROM t;
+SELECT array_append(tags,'x')   FROM t;
+SELECT unnest(tags)             FROM t;   -- 展开为行
+
+-- GIN 索引支持 @>, <@, =, &&
+CREATE INDEX idx_t_tags ON t USING GIN (tags);
 ```
+
+---
 
 ### UUID 类型
 
 ```sql
-UUID              -- 128 位，标准格式 xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+UUID    -- 128 位，16 字节
 
--- 启用扩展（生成 UUID v4）
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- 生成
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+SELECT gen_random_uuid();              -- v4 随机 UUID（pgcrypto 提供）
 
+-- UUID v7（时间有序，PostgreSQL 18 内置）
+SELECT uuidv7();
+
+-- 使用
 CREATE TABLE sessions (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    BIGINT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 
-### 其他常用类型
+---
+
+### 网络地址类型
 
 ```sql
-BYTEA             -- 二进制数据（图片、文件等）
-INET              -- IPv4/IPv6 地址，支持网络运算
-CIDR              -- 网络地址段
-MACADDR           -- MAC 地址
-TSVECTOR          -- 全文检索向量
-TSQUERY           -- 全文检索查询
+INET       -- IPv4/IPv6 主机地址，可选带前缀长度，如 '192.168.1.5/24'
+CIDR       -- IPv4/IPv6 网络段，强制要求有效网络地址，如 '192.168.1.0/24'
+MACADDR    -- 6 字节 MAC 地址
+MACADDR8   -- 8 字节 EUI-64 MAC 地址
+```
+
+```sql
+-- 网络运算
+SELECT '10.0.0.5'::INET << '10.0.0.0/8';     -- TRUE（包含于）
+SELECT '10.0.0.0/24'::CIDR >>= '10.0.0.5';   -- TRUE（包含）
+SELECT network('192.168.1.5/24');            -- 192.168.1.0/24
+SELECT host('192.168.1.5/24');               -- 192.168.1.5
+SELECT masklen('192.168.1.5/24');            -- 24
+```
+
+---
+
+### 几何类型
+
+```sql
+POINT       -- (x, y)
+LINE        -- {A, B, C} 无穷直线 Ax + By + C = 0
+LSEG        -- [(x1,y1),(x2,y2)] 线段
+BOX         -- ((x1,y1),(x2,y2)) 矩形
+PATH        -- [(x1,y1),...] 或 ((x1,y1),...) 路径（开/闭）
+POLYGON     -- ((x1,y1),...) 多边形
+CIRCLE      -- <(x,y),r>
+```
+
+实际地理信息推荐使用 **PostGIS** 扩展的 `GEOMETRY`、`GEOGRAPHY` 类型。
+
+---
+
+### 二进制类型
+
+```sql
+BYTEA      -- 变长二进制串
+
+-- 插入（escape 或 hex）
+INSERT INTO t VALUES (E'\\xDEADBEEF');
+INSERT INTO t VALUES (decode('deadbeef', 'hex'));
+
+-- 读取
+SELECT encode(data, 'hex')    FROM t;
+SELECT encode(data, 'base64') FROM t;
+SELECT length(data)           FROM t;    -- 字节数
+SELECT substring(data, 1, 4)  FROM t;
+```
+
+---
+
+### 全文检索类型
+
+```sql
+TSVECTOR    -- 已分词的文档向量：'cat:1 dog:2'
+TSQUERY     -- 搜索查询：'cat & !dog'
+
+-- 示例
+CREATE TABLE articles (
+  id      BIGSERIAL PRIMARY KEY,
+  body    TEXT NOT NULL,
+  tsv     TSVECTOR GENERATED ALWAYS AS (to_tsvector('english', body)) STORED
+);
+CREATE INDEX idx_articles_tsv ON articles USING GIN (tsv);
+
+SELECT id FROM articles
+WHERE tsv @@ to_tsquery('english', 'postgres & !mysql');
+
+-- 排名
+SELECT id, ts_rank(tsv, query) AS rank
+FROM articles, to_tsquery('postgres') query
+WHERE tsv @@ query
+ORDER BY rank DESC;
+```
+
+---
+
+### 范围类型
+
+表示区间：边界可开可闭，可空端点。
+
+```sql
+INT4RANGE    -- INT  范围
+INT8RANGE    -- BIGINT 范围
+NUMRANGE     -- NUMERIC 范围
+TSRANGE      -- TIMESTAMP 范围
+TSTZRANGE    -- TIMESTAMPTZ 范围
+DATERANGE    -- DATE 范围
+
+-- 构造
+SELECT INT4RANGE(1, 10);                -- [1, 10)，默认左闭右开
+SELECT '[1,10]'::INT4RANGE;             -- 两端都闭
+SELECT '(1,10)'::INT4RANGE;             -- 两端都开
+SELECT '[2026-01-01,2026-12-31]'::DATERANGE;
+
+-- 运算
+SELECT INT4RANGE(1,10) @> 5;                    -- 包含值：TRUE
+SELECT INT4RANGE(1,10) && INT4RANGE(5,15);      -- 重叠：TRUE
+SELECT INT4RANGE(1,10) -|- INT4RANGE(10,20);    -- 相邻：TRUE
+SELECT lower(r), upper(r), isempty(r) FROM t;
+
+-- 典型用途：防止时间段重叠（配合 EXCLUDE 约束，见后文）
+```
+
+---
+
+### 枚举类型
+
+```sql
+-- 先定义
+CREATE TYPE order_status AS ENUM ('pending', 'paid', 'shipped', 'cancelled');
+
+-- 再使用
+CREATE TABLE orders (
+  id     BIGSERIAL PRIMARY KEY,
+  status order_status NOT NULL DEFAULT 'pending'
+);
+
+-- 追加值（不能删除值，只能追加）
+ALTER TYPE order_status ADD VALUE 'refunded';
+ALTER TYPE order_status ADD VALUE 'reviewing' BEFORE 'paid';
+
+-- 重命名值
+ALTER TYPE order_status RENAME VALUE 'cancelled' TO 'canceled';
+
+-- 列出所有值
+SELECT enum_range(NULL::order_status);
+```
+
+> 枚举优点：可读性好、类型安全、顺序定义自动提供排序；缺点：值修改受限，跨库迁移麻烦。若值集合不稳定，用 `TEXT + CHECK` 或查找表。
+
+---
+
+### 复合类型（Composite）
+
+```sql
+-- 自定义复合类型
+CREATE TYPE addr AS (
+  street TEXT,
+  city   TEXT,
+  zip    VARCHAR(10)
+);
+
+CREATE TABLE users (
+  id       BIGSERIAL PRIMARY KEY,
+  home     addr,
+  office   addr
+);
+
+INSERT INTO users (home) VALUES (ROW('No.1', 'Shanghai', '200000'));
+
+-- 访问字段（注意括号）
+SELECT (home).city FROM users;
+UPDATE users SET home.zip = '200001' WHERE id = 1;
+```
+
+---
+
+### 域类型（DOMAIN）
+
+给已有类型加上约束与默认值，形成"受限类型"，便于多表复用。
+
+```sql
+CREATE DOMAIN email_addr AS TEXT
+  CHECK (VALUE ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
+
+CREATE DOMAIN positive_int AS INTEGER
+  CHECK (VALUE > 0);
+
+CREATE TABLE users (
+  id    BIGSERIAL PRIMARY KEY,
+  email email_addr NOT NULL,
+  age   positive_int
+);
+```
+
+---
+
+### 其他类型
+
+```sql
+XML                  -- XML 文档（需编译时启用 --with-libxml）
+BIT(n)               -- 定长位串
+BIT VARYING(n)       -- 变长位串，最多 n 位
+OID                  -- 4 字节对象标识符（系统内部使用）
+PG_LSN               -- WAL 日志序列号（复制/归档场景）
+TXID_SNAPSHOT        -- 旧事务快照类型
+PG_SNAPSHOT          -- 事务快照类型（PG 13+）
 ```
 
 ---
 
 ## 列约束（Column Constraints）
 
-### PRIMARY KEY
+约束分为**列级约束**（写在列定义后）和**表级约束**（写在所有列之后），功能等价，但涉及多列时只能用表级。
 
-主键约束：唯一 + 非空，每张表只能有一个主键，但可以是复合主键。
+### PRIMARY KEY（主键）
+
+唯一 + 非空，每张表仅一个。聚簇索引的起点，外键默认引用目标。
 
 ```sql
--- 单列主键
+-- 单列主键（列级）
 CREATE TABLE users (
-  id BIGSERIAL PRIMARY KEY
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name TEXT
 );
 
--- 复合主键（表级约束）
+-- 复合主键（表级）
 CREATE TABLE order_items (
   order_id   BIGINT,
   product_id BIGINT,
   quantity   INT NOT NULL,
   PRIMARY KEY (order_id, product_id)
 );
-```
 
-### NOT NULL
-
-列值不允许为 `NULL`，是最基础也最常用的约束。
-
-```sql
+-- 命名主键约束（推荐）
 CREATE TABLE users (
-  id       BIGSERIAL PRIMARY KEY,
-  username TEXT NOT NULL,
-  email    TEXT NOT NULL
+  id BIGINT GENERATED ALWAYS AS IDENTITY,
+  CONSTRAINT pk_users PRIMARY KEY (id)
 );
 
--- 事后添加
-ALTER TABLE users ALTER COLUMN email SET NOT NULL;
--- 移除
-ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
+-- 修改主键
+ALTER TABLE users DROP CONSTRAINT pk_users;
+ALTER TABLE users ADD CONSTRAINT pk_users PRIMARY KEY (id);
 ```
 
-### UNIQUE
+### NOT NULL（非空）
 
-唯一约束：该列（或列组合）在表内不允许重复，允许多个 `NULL`（`NULL != NULL`）。
+```sql
+-- 定义时
+CREATE TABLE users (
+  id    BIGINT PRIMARY KEY,
+  email TEXT NOT NULL
+);
+
+-- 后加（需先处理已有 NULL 行）
+UPDATE users SET email = '' WHERE email IS NULL;
+ALTER TABLE users ALTER COLUMN email SET NOT NULL;
+
+-- 移除
+ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
+
+-- 命名 NOT NULL 约束（PostgreSQL 17+，便于 NOT VALID 延迟验证）
+ALTER TABLE users ADD CONSTRAINT nn_email NOT NULL email NOT VALID;
+-- 后期再批量验证
+ALTER TABLE users VALIDATE CONSTRAINT nn_email;
+```
+
+### UNIQUE（唯一）
 
 ```sql
 -- 列级
@@ -190,102 +592,357 @@ CREATE TABLE users (
   email TEXT UNIQUE
 );
 
--- 命名约束（推荐，便于后续删除）
-CREATE TABLE users (
-  email TEXT,
-  CONSTRAINT uq_users_email UNIQUE (email)
-);
-
--- 复合唯一
+-- 复合唯一（表级）
 CREATE TABLE memberships (
   user_id  BIGINT,
   group_id BIGINT,
   CONSTRAINT uq_membership UNIQUE (user_id, group_id)
 );
+
+-- NULL 处理（PostgreSQL 15+）
+-- 默认：NULLS DISTINCT，多个 NULL 被认为互不相同，都可插入
+-- NULLS NOT DISTINCT：多个 NULL 视为相同，只能存在一行
+CREATE TABLE t (
+  code TEXT UNIQUE NULLS NOT DISTINCT
+);
+
+-- 部分唯一索引（替代条件唯一约束）
+CREATE UNIQUE INDEX uq_users_active_email
+  ON users (email) WHERE deleted_at IS NULL;
 ```
 
-### DEFAULT
-
-为列指定默认值，插入时若未提供该列则自动填充。
+### DEFAULT（默认值）
 
 ```sql
 CREATE TABLE posts (
-  id         BIGSERIAL PRIMARY KEY,
-  status     TEXT        NOT NULL DEFAULT 'draft',
-  view_count INT         NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id          BIGSERIAL PRIMARY KEY,
+  status      TEXT         NOT NULL DEFAULT 'draft',
+  view_count  INT          NOT NULL DEFAULT 0,
+  tags        TEXT[]       NOT NULL DEFAULT '{}',
+  config      JSONB        NOT NULL DEFAULT '{}'::JSONB,
+  uuid        UUID         NOT NULL DEFAULT gen_random_uuid(),
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  -- 更通用的"当前时间"
+  updated_at  TIMESTAMPTZ  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- 可调用函数
+  random_val  DOUBLE PRECISION DEFAULT random(),
+  -- 可用序列
+  seq_val     BIGINT       DEFAULT nextval('my_seq')
 );
+
+-- 修改默认
+ALTER TABLE posts ALTER COLUMN status SET DEFAULT 'pending';
+ALTER TABLE posts ALTER COLUMN status DROP DEFAULT;
 ```
 
-### CHECK
-
-自定义校验表达式，插入或更新时若表达式为假则报错。
+### CHECK（检查约束）
 
 ```sql
+-- 列级
 CREATE TABLE products (
-  id    BIGSERIAL PRIMARY KEY,
-  price NUMERIC(10, 2) CHECK (price >= 0),
-  stock INT            CHECK (stock >= 0),
-  -- 命名 CHECK，便于错误定位
-  CONSTRAINT chk_price_positive CHECK (price >= 0)
+  price NUMERIC(10,2) CHECK (price >= 0)
 );
 
--- 跨列 CHECK
-CREATE TABLE events (
-  starts_at TIMESTAMPTZ NOT NULL,
-  ends_at   TIMESTAMPTZ NOT NULL,
-  CONSTRAINT chk_event_duration CHECK (ends_at > starts_at)
+-- 命名 CHECK（表级，推荐）
+CREATE TABLE products (
+  price    NUMERIC(10,2),
+  discount NUMERIC(4,2),
+  CONSTRAINT chk_price      CHECK (price >= 0),
+  CONSTRAINT chk_discount   CHECK (discount BETWEEN 0 AND 1),
+  CONSTRAINT chk_cross      CHECK (price * (1 - discount) >= 0)
 );
+
+-- 后加 CHECK（存在不符合的数据会报错）
+ALTER TABLE products
+  ADD CONSTRAINT chk_stock CHECK (stock >= 0);
+
+-- NOT VALID：不校验已有数据（后续可补校验）
+ALTER TABLE products
+  ADD CONSTRAINT chk_stock CHECK (stock >= 0) NOT VALID;
+ALTER TABLE products VALIDATE CONSTRAINT chk_stock;
+
+-- 删除 CHECK
+ALTER TABLE products DROP CONSTRAINT chk_stock;
 ```
 
-### FOREIGN KEY
+> CHECK 表达式**不能引用其他表**，也**不能包含子查询**。跨表校验需用触发器或外键。
 
-外键约束：引用另一张表的主键或唯一键，保证引用完整性。
+### FOREIGN KEY（外键）
 
 ```sql
 CREATE TABLE posts (
   id      BIGSERIAL PRIMARY KEY,
-  user_id BIGINT NOT NULL
-    REFERENCES users(id)
-    ON DELETE CASCADE      -- 父行删除时级联删除子行
-    ON UPDATE CASCADE,     -- 父行主键更新时级联更新
-  title   TEXT NOT NULL
+  user_id BIGINT NOT NULL,
+  CONSTRAINT fk_posts_user
+    FOREIGN KEY (user_id) REFERENCES users(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
 );
+```
 
--- 常见 ON DELETE 策略
--- CASCADE     父行删除 → 子行一并删除
--- SET NULL    父行删除 → 子行外键置 NULL（列须允许 NULL）
--- SET DEFAULT 父行删除 → 子行外键置默认值
--- RESTRICT    父行有子行时拒绝删除（默认）
--- NO ACTION   与 RESTRICT 类似，延迟到事务结束检查
+#### ON DELETE / ON UPDATE 策略
+
+| 策略 | 父行删除 / 主键变更时的行为 |
+|------|---------------------------|
+| `NO ACTION`（默认） | 有引用则报错，可延迟到事务末检查 |
+| `RESTRICT` | 有引用则立即报错，不能延迟 |
+| `CASCADE` | 子行同步删除 / 同步更新 |
+| `SET NULL` | 子行外键置 NULL（列须允许 NULL） |
+| `SET DEFAULT` | 子行外键置默认值（默认值必须存在于父表） |
+
+```sql
+-- SET NULL 可以指定只清空部分列（PG 15+）
+FOREIGN KEY (a_id, b_id) REFERENCES other(a, b)
+  ON DELETE SET NULL (b_id);
+
+-- 复合外键
+CONSTRAINT fk_compound
+  FOREIGN KEY (order_id, product_id)
+  REFERENCES order_items(order_id, product_id);
+
+-- NOT VALID：不校验已有数据
+ALTER TABLE posts
+  ADD CONSTRAINT fk_posts_user FOREIGN KEY (user_id) REFERENCES users(id) NOT VALID;
+ALTER TABLE posts VALIDATE CONSTRAINT fk_posts_user;
+
+-- MATCH 模式（复合外键的 NULL 处理）
+-- MATCH SIMPLE（默认）：任一列为 NULL 即允许
+-- MATCH FULL：所有列全 NULL 才允许，或全不 NULL
+-- MATCH PARTIAL：暂未实现
 ```
 
 ### GENERATED（生成列）
 
-列值由表达式自动计算，不需要手动插入。
-
 ```sql
--- STORED：物理存储计算结果
+-- STORED：物理存储，随源列更新而重算
 CREATE TABLE orders (
   quantity   INT            NOT NULL,
-  unit_price NUMERIC(10, 2) NOT NULL,
-  total      NUMERIC(10, 2) GENERATED ALWAYS AS (quantity * unit_price) STORED
+  unit_price NUMERIC(10,2)  NOT NULL,
+  total      NUMERIC(10,2) GENERATED ALWAYS AS (quantity * unit_price) STORED,
+  search_vec TSVECTOR      GENERATED ALWAYS AS
+    (to_tsvector('simple', coalesce(note,''))) STORED,
+  note       TEXT
+);
+
+-- 生成列限制：
+-- 1. 表达式必须是 IMMUTABLE（不能引用 NOW()、random() 等）
+-- 2. 不能引用其他生成列
+-- 3. 不能显式插入值（必须让其自动计算）
+-- 4. PostgreSQL 目前只支持 STORED，VIRTUAL 在 PG 18+ 标记支持
+
+-- PG 18+ 支持 VIRTUAL（不存储，查询时计算）
+CREATE TABLE t (
+  a INT,
+  b INT,
+  sum INT GENERATED ALWAYS AS (a + b) VIRTUAL
 );
 ```
 
-### 约束管理
+### IDENTITY（身份列）
+
+标准 SQL 的自增列语法，替代 `SERIAL`。
 
 ```sql
--- 查看表的所有约束
+CREATE TABLE t (
+  -- ALWAYS: 拒绝手动指定值，除非 OVERRIDING SYSTEM VALUE
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  -- BY DEFAULT: 允许手动插入（等同 SERIAL）
+  seq BIGINT GENERATED BY DEFAULT AS IDENTITY
+);
+
+-- 插入时覆盖 ALWAYS 生成
+INSERT INTO t (id, seq) OVERRIDING SYSTEM VALUE VALUES (100, 1);
+
+-- 修改起始值与步长
+ALTER TABLE t ALTER COLUMN id RESTART WITH 1000;
+ALTER TABLE t ALTER COLUMN id SET INCREMENT BY 10;
+
+-- 改变类型（BY DEFAULT ↔ ALWAYS）
+ALTER TABLE t ALTER COLUMN id SET GENERATED BY DEFAULT;
+
+-- 移除身份属性
+ALTER TABLE t ALTER COLUMN id DROP IDENTITY IF EXISTS;
+```
+
+### EXCLUDE（排他约束）
+
+比 `UNIQUE` 更通用：对任意两行，用指定操作符比较任意列，若结果为真则拒绝。最常用于**防止时间段重叠**。
+
+```sql
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+CREATE TABLE bookings (
+  id         BIGSERIAL PRIMARY KEY,
+  room_id    INT NOT NULL,
+  during     TSTZRANGE NOT NULL,
+  -- 同一房间的时间段不得重叠
+  EXCLUDE USING GIST (
+    room_id WITH =,
+    during  WITH &&
+  )
+);
+
+-- 尝试插入重叠记录会报错
+INSERT INTO bookings (room_id, during) VALUES
+  (1, '[2026-05-01 09:00, 2026-05-01 11:00)'),
+  (1, '[2026-05-01 10:00, 2026-05-01 12:00)');   -- ERROR: conflicting key
+```
+
+### COLLATE（排序规则）
+
+指定列的排序/比较规则。
+
+```sql
+CREATE TABLE t (
+  name  TEXT COLLATE "C",                -- 按字节比较，速度最快
+  name_zh TEXT COLLATE "zh_CN.UTF-8",    -- 中文按拼音
+  name_ci TEXT COLLATE "en-US-x-icu"     -- ICU 大小写不敏感（需 ICU 支持）
+);
+
+-- 查询时临时指定
+SELECT * FROM t ORDER BY name COLLATE "zh_CN.UTF-8";
+```
+
+### 延迟约束（DEFERRABLE）
+
+默认约束在每条语句执行后立即检查；延迟约束允许整个事务结束后再检查。对循环引用或批量数据调整非常有用。
+
+```sql
+CREATE TABLE t (
+  id  BIGINT PRIMARY KEY,
+  ref BIGINT,
+  CONSTRAINT fk_ref FOREIGN KEY (ref) REFERENCES t(id)
+    DEFERRABLE INITIALLY DEFERRED
+);
+-- 选项：
+-- NOT DEFERRABLE（默认）
+-- DEFERRABLE INITIALLY IMMEDIATE
+-- DEFERRABLE INITIALLY DEFERRED
+
+-- 运行期控制
+BEGIN;
+  SET CONSTRAINTS ALL DEFERRED;
+  -- ... 大批量调整 ...
+COMMIT;    -- 提交时统一校验
+```
+
+---
+
+## 约束管理
+
+### 查看表的全部约束
+
+```sql
+-- psql 元指令
+\d+ app.users
+
+-- 通过系统目录
 SELECT conname, contype, pg_get_constraintdef(oid)
 FROM pg_constraint
 WHERE conrelid = 'app.users'::regclass;
 
--- 删除约束
-ALTER TABLE users DROP CONSTRAINT uq_users_email;
+-- 约束类型 (contype)：
+-- p = 主键, u = 唯一, f = 外键, c = CHECK, x = 排他, t = 触发器约束, n = NOT NULL
+```
 
--- 禁用 / 启用外键检查（批量导入时临时禁用）
+### 查看外键引用关系
+
+```sql
+SELECT
+  con.conname                            AS constraint_name,
+  cl.relname                             AS table_name,
+  fcl.relname                            AS referenced_table,
+  a.attname                              AS column_name,
+  fa.attname                             AS referenced_column,
+  con.confdeltype                        AS on_delete,
+  con.confupdtype                        AS on_update
+FROM pg_constraint con
+JOIN pg_class cl  ON cl.oid = con.conrelid
+JOIN pg_class fcl ON fcl.oid = con.confrelid
+JOIN unnest(con.conkey)  WITH ORDINALITY AS k(attnum, ord) ON TRUE
+JOIN unnest(con.confkey) WITH ORDINALITY AS fk(attnum, ord) ON k.ord = fk.ord
+JOIN pg_attribute a  ON a.attrelid = con.conrelid  AND a.attnum = k.attnum
+JOIN pg_attribute fa ON fa.attrelid = con.confrelid AND fa.attnum = fk.attnum
+WHERE con.contype = 'f';
+```
+
+### 删除 / 重命名约束
+
+```sql
+ALTER TABLE users DROP CONSTRAINT uq_users_email;
+ALTER TABLE users DROP CONSTRAINT IF EXISTS uq_users_email;
+ALTER TABLE users RENAME CONSTRAINT uq_email TO uq_users_email;
+```
+
+### 临时禁用约束（批量导入场景）
+
+```sql
+-- 禁用所有触发器（包括外键检查）
 ALTER TABLE posts DISABLE TRIGGER ALL;
--- ... 批量插入 ...
+
+-- 批量导入
+COPY posts FROM '/tmp/posts.csv' WITH CSV;
+
+-- 重新启用
 ALTER TABLE posts ENABLE TRIGGER ALL;
+```
+
+> 生产环境慎用 `DISABLE TRIGGER ALL`：可能留下违反外键/业务规则的脏数据。更安全的做法是把导入放在单个事务中，并在最后 `SET CONSTRAINTS ALL IMMEDIATE` 校验。
+
+### NOT VALID 的用法
+
+向大表添加约束时，立即校验会长时间锁表。`NOT VALID` 让约束仅对新写入生效，老数据可以后台慢慢校验：
+
+```sql
+-- 1. 先快速加上（仅锁 schema 级，秒级）
+ALTER TABLE posts
+  ADD CONSTRAINT chk_len CHECK (length(title) <= 200) NOT VALID;
+
+-- 2. 后台批量修数据（逐批 UPDATE）
+
+-- 3. 最终验证（仍需扫全表，但只加 SHARE UPDATE EXCLUSIVE 锁，不阻塞读写）
+ALTER TABLE posts VALIDATE CONSTRAINT chk_len;
+```
+
+---
+
+## 综合示例：一个完整的业务表
+
+```sql
+CREATE TABLE app.orders (
+  id             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  order_no       TEXT NOT NULL,
+  user_id        BIGINT NOT NULL,
+  status         order_status NOT NULL DEFAULT 'pending',
+  amount         NUMERIC(12, 2) NOT NULL,
+  discount       NUMERIC(4, 2) NOT NULL DEFAULT 0,
+  final_amount   NUMERIC(12, 2) GENERATED ALWAYS AS
+                   (amount * (1 - discount)) STORED,
+  items          JSONB NOT NULL DEFAULT '[]'::JSONB,
+  metadata       JSONB,
+  paid_at        TIMESTAMPTZ,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  -- 约束
+  CONSTRAINT uq_orders_order_no UNIQUE (order_no),
+  CONSTRAINT fk_orders_user
+    FOREIGN KEY (user_id) REFERENCES app.users(id) ON DELETE RESTRICT,
+  CONSTRAINT chk_amount   CHECK (amount >= 0),
+  CONSTRAINT chk_discount CHECK (discount BETWEEN 0 AND 1),
+  CONSTRAINT chk_paid_time CHECK (
+    (status = 'paid' AND paid_at IS NOT NULL) OR
+    (status != 'paid' AND paid_at IS NULL)
+  )
+);
+
+-- 索引
+CREATE INDEX idx_orders_user_status ON app.orders (user_id, status);
+CREATE INDEX idx_orders_created_at  ON app.orders (created_at DESC);
+CREATE INDEX idx_orders_items_gin   ON app.orders USING GIN (items);
+
+-- 注释（方便前端/后端协作与工具自动生成文档）
+COMMENT ON TABLE  app.orders IS '订单主表';
+COMMENT ON COLUMN app.orders.status IS '订单状态：pending/paid/shipped/cancelled/refunded';
+COMMENT ON COLUMN app.orders.final_amount IS '实付金额 = amount * (1 - discount)，生成列';
 ```
