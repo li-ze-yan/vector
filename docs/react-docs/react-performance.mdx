@@ -1,0 +1,68 @@
+export const title = "性能优化";
+export const description = "React 性能优化策略，包括避免不必要渲染、缓存计算结果和回调函数。";
+
+## 概述
+
+React 默认在父组件重新渲染时，会重新渲染所有子组件。性能优化的核心是**减少不必要的渲染和计算**。
+
+### 优化手段一览
+
+| 手段 | 作用 | 适用场景 |
+|------|------|----------|
+| `React.memo` | 跳过 Props 未变的重新渲染 | 纯展示组件 |
+| [useMemo](/docs/react-performance-usememo) | 缓存计算结果 | 耗时计算 |
+| [useCallback](/docs/react-performance-usecallback) | 缓存回调函数 | 传给子组件的函数 |
+| `key` | 帮助 React 识别列表元素 | 动态列表 |
+| 懒加载 | 按需加载组件 | 大型页面 |
+
+### React.memo
+
+包裹组件，当 Props 未变时跳过渲染：
+
+```tsx
+const ExpensiveList = React.memo(function ExpensiveList({ items }: { items: Item[] }) {
+  return (
+    <ul>
+      {items.map((item) => (
+        <li key={item.id}>{item.name}</li>
+      ))}
+    </ul>
+  );
+});
+```
+
+### 懒加载
+
+使用 `React.lazy` 和 `Suspense` 按需加载：
+
+```tsx
+const HeavyChart = React.lazy(() => import("./HeavyChart"));
+
+function Dashboard() {
+  return (
+    <Suspense fallback={<div>Loading chart...</div>}>
+      <HeavyChart data={chartData} />
+    </Suspense>
+  );
+}
+```
+
+### 常见陷阱
+
+```tsx
+// 每次渲染都创建新对象 → 导致子组件重新渲染
+function Parent() {
+  return <Child style={{ color: "red" }} />; // 每次都是新引用
+}
+
+// 修复：提取到组件外部
+const childStyle = { color: "red" };
+function Parent() {
+  return <Child style={childStyle} />; // 始终同一引用
+}
+```
+
+### 相关内容
+
+- [useMemo](/docs/react-performance-usememo) — 缓存计算结果
+- [useCallback](/docs/react-performance-usecallback) — 缓存回调函数

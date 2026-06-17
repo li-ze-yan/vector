@@ -1,0 +1,124 @@
+export const title = "Zustand";
+export const description = "Zustand 是一个轻量、简洁的 React 状态管理库，API 简单且性能优秀。";
+
+## 概述
+
+Zustand 是一个小巧的状态管理库（约 1KB），不需要 Provider 包裹，使用 Hook 直接访问 store。相比 Redux 和 Context，代码量更少且性能更好。
+
+## Examples
+
+### 基本用法
+
+```tsx
+import { create } from "zustand";
+
+// 创建 store
+interface CounterStore {
+  count: number;
+  increment: () => void;
+  decrement: () => void;
+  reset: () => void;
+}
+
+const useCounterStore = create<CounterStore>((set) => ({
+  count: 0,
+  increment: () => set((state) => ({ count: state.count + 1 })),
+  decrement: () => set((state) => ({ count: state.count - 1 })),
+  reset: () => set({ count: 0 }),
+}));
+
+// 使用 — 无需 Provider
+function Counter() {
+  const { count, increment, decrement, reset } = useCounterStore();
+
+  return (
+    <div>
+      <span>{count}</span>
+      <button onClick={increment}>+</button>
+      <button onClick={decrement}>-</button>
+      <button onClick={reset}>Reset</button>
+    </div>
+  );
+}
+```
+
+### 选择性订阅
+
+只订阅需要的字段，避免不必要的重新渲染：
+
+```tsx
+// 只在 count 变化时重新渲染
+function DisplayCount() {
+  const count = useCounterStore((state) => state.count);
+  return <span>{count}</span>;
+}
+
+// 只获取 actions，不订阅状态
+function Controls() {
+  const increment = useCounterStore((state) => state.increment);
+  return <button onClick={increment}>+</button>;
+}
+```
+
+### 搭配 immer 中间件
+
+使用 immer 简化嵌套对象的更新：
+
+```tsx
+import { create } from "zustand";
+import { immer } from "zustand/middleware/immer";
+
+interface TodoStore {
+  todos: { id: number; text: string; done: boolean }[];
+  toggle: (id: number) => void;
+  add: (text: string) => void;
+}
+
+const useTodoStore = create<TodoStore>()(
+  immer((set) => ({
+    todos: [],
+    toggle: (id) =>
+      set((state) => {
+        const todo = state.todos.find((t) => t.id === id);
+        if (todo) todo.done = !todo.done; // 直接修改，immer 处理不可变性
+      }),
+    add: (text) =>
+      set((state) => {
+        state.todos.push({ id: Date.now(), text, done: false });
+      }),
+  })),
+);
+```
+
+### 持久化存储
+
+```tsx
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+
+const useSettingsStore = create(
+  persist(
+    (set) => ({
+      theme: "system",
+      language: "zh-CN",
+      setTheme: (theme: string) => set({ theme }),
+      setLanguage: (language: string) => set({ language }),
+    }),
+    {
+      name: "settings-store", // localStorage key
+      storage: createJSONStorage(() => localStorage),
+    },
+  ),
+);
+```
+
+## Zustand vs Context vs Redux
+
+| | Zustand | Context | Redux |
+|---|---------|---------|-------|
+| 包大小 | ~1KB | 内置 | ~7KB |
+| 样板代码 | 极少 | 少 | 多 |
+| Provider | 不需要 | 需要 | 需要 |
+| 性能 | 选择性订阅 | 全量重渲染 | 选择性订阅 |
+| 中间件 | 支持 | 不支持 | 支持 |
+| DevTools | 支持 | 不支持 | 支持 |

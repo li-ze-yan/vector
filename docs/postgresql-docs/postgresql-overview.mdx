@@ -1,0 +1,142 @@
+export const title = "PostgreSQL 概述";
+export const description = "PostgreSQL 的由来、核心优势与 Docker 安装方式。";
+
+## 由来
+
+PostgreSQL 起源于 1977 年加州大学伯克利分校的 **INGRES** 项目。1985 年，Michael Stonebraker 教授主持启动了后继项目 **POSTGRES**，专注于面向对象的关系模型与复杂数据类型支持。1994 年，Andrew Yu 和 Jolly Chen 为其加入 SQL 查询语言，项目随之更名为 **Postgres95**，并于 1996 年正式改名为 **PostgreSQL**，同年以 BSD 许可证开源发布。
+
+此后项目由全球志愿者社区持续推进，形成 PostgreSQL 全球开发团队（PGDG），每年发布一个主版本，迄今已演进至 PostgreSQL 17。
+
+## 优势
+
+### 标准兼容性强
+
+PostgreSQL 对 SQL 标准的支持程度在主流开源数据库中最高，涵盖窗口函数、CTE（公共表表达式）、递归查询、外键、触发器等高级特性，几乎无需为了兼容性妥协业务模型。
+
+### 丰富的数据类型
+
+原生支持 JSON / JSONB、数组、范围类型、UUID、hstore 键值对、几何类型、全文检索向量（`tsvector`）等，减少对外部存储或中间件的依赖。JSONB 以二进制格式存储，可建索引，查询性能与专用文档数据库相当。
+
+### 强大的扩展性
+
+通过扩展机制可无缝集成：
+
+- **PostGIS**：地理信息系统（GIS）空间数据处理
+- **pgvector**：向量相似度搜索，适用于 AI 嵌入向量
+- **TimescaleDB**：时序数据高性能存储与查询
+- **pg_partman**：自动分区管理
+
+### ACID 与事务可靠性
+
+完整支持 ACID 事务，使用 MVCC（多版本并发控制）实现读写互不阻塞，高并发场景下表现稳定。支持 Savepoint、两阶段提交（2PC）和行级锁，满足金融、电商等严苛的一致性要求。
+
+### 高可用与复制
+
+内置流复制（Streaming Replication）和逻辑复制（Logical Replication），结合 Patroni / Repmgr 等工具可快速构建主从高可用集群。PostgreSQL 16 起逻辑复制支持双向同步，为多活架构提供基础。
+
+### 开源免费，无许可限制
+
+采用 PostgreSQL 许可证（类 BSD），商业使用无需付费，无行数、核数、连接数等限制，与 GPL 兼容，可随意嵌入闭源产品。
+
+### 活跃的社区与生态
+
+每年一次主版本，安全补丁按需发布，主要版本支持 5 年。pgAdmin、DBeaver、Beekeeper Studio 等 GUI 工具覆盖日常管理需求；ORM 层 Prisma、SQLAlchemy、GORM 均对 PostgreSQL 有一流支持。
+
+## Docker 安装
+
+### 快速启动
+
+```bash
+docker run -d \
+  --name postgres \
+  -e POSTGRES_PASSWORD=your_password \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_DB=mydb \
+  -p 5432:5432 \
+  -v pgdata:/var/lib/postgresql \
+  --restart unless-stopped \
+  postgres:18
+```
+
+- `POSTGRES_PASSWORD`：superuser 密码（必填）
+- `POSTGRES_USER`：superuser 用户名，默认 `postgres`
+- `POSTGRES_DB`：自动创建的初始数据库，默认同用户名
+- `-p 5432:5432`：将容器端口发布到宿主机
+- `-v pgdata:/…`：使用命名卷持久化数据
+
+### 验证连接
+
+```bash
+# 使用 psql 进入容器
+docker exec -it postgres psql -U postgres -d mydb
+
+# 在容器外通过 psql 连接（需本地安装 psql）
+psql -h 127.0.0.1 -U postgres -d mydb
+```
+
+### 使用 Docker Compose
+
+```yaml
+services:
+  postgres:
+    image: postgres:18
+    container_name: postgres
+    environment:
+      POSTGRES_PASSWORD: your_password
+      POSTGRES_USER: postgres
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+```
+
+```bash
+docker compose up -d
+docker compose ps          # 确认 STATUS 为 healthy
+docker compose logs -f postgres
+```
+
+### 常用运维命令
+
+```bash
+# 进入 psql
+docker exec -it postgres psql -U postgres
+
+# 备份数据库
+docker exec postgres pg_dump -U postgres mydb > mydb.sql
+
+# 恢复数据库
+cat mydb.sql | docker exec -i postgres psql -U postgres mydb
+
+# 查看 PostgreSQL 版本
+docker exec postgres postgres --version
+```
+
+### 设置镜像加速（可选）
+
+若拉取镜像较慢，可配置 Docker 镜像源：
+
+```bash
+sudo vi /etc/docker/daemon.json
+```
+
+```json
+{
+  "registry-mirrors": ["https://docker.m.daocloud.io", "https://docker.1panel.live"]
+}
+```
+
+```bash
+sudo service docker restart
+docker pull postgres:18
+```

@@ -1,0 +1,110 @@
+export const title = "JSX 语法";
+export const description = "JSX 是 JavaScript 的语法扩展，允许在 JS 中编写类似 HTML 的标记来描述 UI 结构。";
+
+## 概述
+
+JSX 不是模板语言，它是 JavaScript 的语法糖。编译后 `<div>hello</div>` 会变成 `React.createElement("div", null, "hello")`。
+
+## Examples
+
+### 基本语法
+
+```tsx
+// JSX
+const element = <h1 className="title">Hello, world!</h1>;
+
+// 编译后等价于
+const element = React.createElement("h1", { className: "title" }, "Hello, world!");
+```
+
+### 嵌入表达式
+
+用 `{}` 嵌入任意 JavaScript 表达式：
+
+```tsx
+const name = "Alice";
+const age = 25;
+
+function Profile() {
+  return (
+    <div>
+      <h1>{name}</h1>
+      <p>Age: {age}</p>
+      <p>Next year: {age + 1}</p>
+      <p>{age >= 18 ? "Adult" : "Minor"}</p>
+      <p>Joined: {new Date().toLocaleDateString()}</p>
+    </div>
+  );
+}
+```
+
+### JSX 与 HTML 的区别
+
+| HTML | JSX | 原因 |
+|------|-----|------|
+| `class` | `className` | `class` 是 JS 保留字 |
+| `for` | `htmlFor` | `for` 是 JS 保留字 |
+| `style="color: red"` | `style={{ color: "red" }}` | style 接收对象 |
+| `onclick` | `onClick` | 驼峰命名 |
+| `<br>` | `<br />` | 必须闭合 |
+| `<!-- comment -->` | `{/* comment */}` | JS 注释语法 |
+
+### 列表渲染
+
+```tsx
+const items = ["React", "Vue", "Angular"];
+
+function List() {
+  return (
+    <ul>
+      {items.map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### 条件渲染
+
+```tsx
+function Notification({ count }: { count: number }) {
+  return (
+    <div>
+      {/* 与运算符 */}
+      {count > 0 && <span className="badge">{count}</span>}
+
+      {/* 三元表达式 */}
+      {count > 0 ? <p>{count} new messages</p> : <p>No new messages</p>}
+    </div>
+  );
+}
+```
+
+### Fragment
+
+返回多个元素而不添加额外 DOM 节点：
+
+```tsx
+// 完整写法
+function App() {
+  return (
+    <React.Fragment>
+      <Header />
+      <Main />
+      <Footer />
+    </React.Fragment>
+  );
+}
+
+// 简写
+function App() {
+  return (
+    <>
+      <Header />
+      <Main />
+      <Footer />
+    </>
+  );
+}
+```

@@ -1,0 +1,62 @@
+export const title = "组件基础";
+export const description = "React 组件是构建 UI 的基本单元，通过组合组件来构建复杂的用户界面。";
+
+## 概述
+
+React 应用由组件构成。组件是独立、可复用的 UI 片段，可以接收输入（Props）并返回描述页面内容的 React 元素。
+
+### 函数组件
+
+React 推荐使用函数组件：
+
+```tsx
+function Greeting({ name }: { name: string }) {
+  return <h1>Hello, {name}!</h1>;
+}
+
+// 箭头函数写法
+const Greeting: React.FC<{ name: string }> = ({ name }) => {
+  return <h1>Hello, {name}!</h1>;
+};
+```
+
+### 组件组合
+
+通过嵌套和组合构建复杂 UI：
+
+```tsx
+function App() {
+  return (
+    <Layout>
+      <Header />
+      <main>
+        <Sidebar />
+        <Content />
+      </main>
+      <Footer />
+    </Layout>
+  );
+}
+```
+
+### 条件渲染
+
+```tsx
+function Dashboard({ isLoggedIn }: { isLoggedIn: boolean }) {
+  if (!isLoggedIn) {
+    return <LoginForm />;
+  }
+
+  return (
+    <div>
+      <h1>Welcome back!</h1>
+      <UserProfile />
+    </div>
+  );
+}
+```
+
+### 相关内容
+
+- [JSX 语法](/docs/react-components-jsx) — JSX 的基本语法规则
+- [Props](/docs/react-components-props) — 组件间数据传递
